@@ -13,3 +13,9 @@
 	1. No ==DNS== required
 2. Authenticating Users
 3. 
+
+
+
+---
+### References:
+1. https://ivov.dev/notes/s3-object-storage
