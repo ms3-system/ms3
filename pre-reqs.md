@@ -4,3 +4,7 @@
 3. Application Logic idea:
 	1. #TODO
 4. [ ] Do we need env in our project to use `Vault`?
+5. [ ] GitHub Actions and CI/CD
+6. [ ] Monitoring and Observability
+	1. Omar:🖕🏻
+7. 
