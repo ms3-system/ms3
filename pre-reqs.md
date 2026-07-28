@@ -23,16 +23,19 @@
 ## Project Design
 
 - Separate each service in a directory and each one has its own docker config
-	- auth service
-	- api service
-	- data service
-	- metadata service
-	- etc ..
+	- Auth service
+ 		- TODO
+	- Api service
+ 		- The idea for the API Service is to be as simple as possible and its main goal is to distribute requests for each corresponding services which means that clients should be responsible for configuring the HTTP requests for API service to work.
+	- Data service
+	- Metadata service
 
-- Add unit tests for core logic calculations
+- Core operations
 	- pre-signed URLs
-	- uploading
-	- downloading
+	- Upload objects
+	- Get / Download objects
+ 	- List buckets
+ 	- User Authentication
 
 ---
 ### References:
