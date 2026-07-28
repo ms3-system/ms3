@@ -1,9 +1,11 @@
 package main
 
-import "github.com/naseyro/minis3/api"
+import (
+	"github.com/naseyro/minis3/service"
+)
 
 func main() {
+	// change service.Serve() to server.
 	// call the API Service and keep listening
-	server := api.NewServer()
-	server.Serve()
+	service.Serve()
 }

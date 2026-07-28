@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 
 // API Service is responsible to Start the Server and Distribute requests to the appropriate service
 type APIService struct {
+	//
 }
 
 func Serve() {
