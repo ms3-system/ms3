@@ -6,7 +6,7 @@ binary, single container, pluggable storage backends, and a CLI client for every
 ## Features
 
 - S3-compatible REST API (buckets, objects, listing)
-- CLI client (`ms3c`) for managing buckets and objects from the terminal
+- CLI client (`ms3`) for managing buckets and objects from the terminal
 - Pluggable storage backends — local filesystem or WebDAV
 - Store any file/MIME type
 - Presigned URLs with automatic expiration for secure, temporary downloads
