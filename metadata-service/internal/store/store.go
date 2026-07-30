@@ -2,6 +2,9 @@ package store
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -17,7 +20,11 @@ func (s *Store) DB() *bolt.DB {
 }
 
 func Open(path string) (*Store, error) {
-	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * 1000000000})
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, fmt.Errorf("create db dir for %q: %w", path, err)
+	}
+
+	db, err := bolt.Open(path, 0o600, &bolt.Options{Timeout: time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("open bbolt file %q: %w", path, err)
 	}
