@@ -19,6 +19,10 @@ func checkSchemaVersion(tx *bolt.Tx) error {
 		return meta.Put(schemaVersionKey, encodeVersion(currentSchemaVersion))
 	}
 
+	if len(raw) != 8 {
+		return fmt.Errorf("invalid schema version encoding (len=%d)", len(raw))
+	}
+
 	version := decodeVersion(raw)
 	switch {
 	case version > currentSchemaVersion:
