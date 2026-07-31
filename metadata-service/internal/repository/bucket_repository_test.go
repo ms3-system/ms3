@@ -59,11 +59,15 @@ func TestBoltBucketRepository_Create_StampsCreatedAtWhenUnset(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now().UTC()
-	err := repo.Create(ctx, &model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1"}) // CreatedAt intentionally omitted
-	if err != nil {
+	b := &model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1"} // CreatedAt intentionally omitted
+	if err := repo.Create(ctx, b); err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 	after := time.Now().UTC()
+
+	if b.CreatedAt.IsZero() {
+		t.Fatal("b.CreatedAt is zero, want the caller's bucket stamped in place")
+	}
 
 	got, err := repo.GetByName(ctx, "my-bucket")
 	if err != nil {
