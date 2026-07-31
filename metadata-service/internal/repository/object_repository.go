@@ -29,7 +29,7 @@ func NewBoltObjectRepository(db *bbolt.DB, logger *slog.Logger) *BoltObjectRepos
 	}
 }
 
-func (r *BoltObjectRepository) Put(ctx context.Context, o model.Object) error {
+func (r *BoltObjectRepository) Put(ctx context.Context, o *model.Object) error {
 	log := r.logger.With(slog.String("bucket_name", o.BucketName), slog.String("object_key", o.ObjectKey))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {

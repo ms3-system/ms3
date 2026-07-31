@@ -9,8 +9,8 @@ import (
 	"metadata-service/internal/model"
 )
 
-func newTestObject(bucketName, key string) model.Object {
-	return model.Object{
+func newTestObject(bucketName, key string) *model.Object {
+	return &model.Object{
 		ID:          "object-id-" + key,
 		BucketName:  bucketName,
 		ObjectKey:   key,
@@ -75,11 +75,15 @@ func TestBoltObjectRepository_Put_StampsCreatedAtWhenUnset(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now().UTC()
-	err := repo.Put(ctx, model.Object{ID: "o-1", BucketName: "my-bucket", ObjectKey: "photo.png"}) // CreatedAt intentionally omitted
-	if err != nil {
+	o := &model.Object{ID: "o-1", BucketName: "my-bucket", ObjectKey: "photo.png"} // CreatedAt intentionally omitted
+	if err := repo.Put(ctx, o); err != nil {
 		t.Fatalf("Put() error = %v", err)
 	}
 	after := time.Now().UTC()
+
+	if o.CreatedAt.IsZero() {
+		t.Fatal("o.CreatedAt is zero, want the caller's object stamped in place")
+	}
 
 	got, err := repo.Get(ctx, "my-bucket", "photo.png")
 	if err != nil {
