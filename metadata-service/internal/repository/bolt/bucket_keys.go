@@ -1,10 +1,10 @@
 package bolt
 
-func ownerIndexKey(ownerID, bucketName string) ([]byte, error) {
-	if err := validateKeyComponent("owner_id", ownerID); err != nil {
+func OwnerIndexKey(ownerID, bucketName string) ([]byte, error) {
+	if err := ValidateKeyComponent("owner_id", ownerID); err != nil {
 		return nil, err
 	}
-	if err := validateKeyComponent("bucket_name", bucketName); err != nil {
+	if err := ValidateKeyComponent("bucket_name", bucketName); err != nil {
 		return nil, err
 	}
 
@@ -15,8 +15,8 @@ func ownerIndexKey(ownerID, bucketName string) ([]byte, error) {
 	return key, nil
 }
 
-func ownerIndexPrefix(ownerID string) ([]byte, error) {
-	if err := validateKeyComponent("owner_id", ownerID); err != nil {
+func OwnerIndexPrefix(ownerID string) ([]byte, error) {
+	if err := ValidateKeyComponent("owner_id", ownerID); err != nil {
 		return nil, err
 	}
 
