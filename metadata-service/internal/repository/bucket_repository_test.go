@@ -198,3 +198,34 @@ func seedRawObject(t *testing.T, db *bbolt.DB, bucketName, objectKeyName string)
 		t.Fatalf("seed object: %v", err)
 	}
 }
+
+func TestBoltBucketRepository_Delete_RemovesStaleOwnerIndexEntry(t *testing.T) {
+	repo := NewBoltBucketRepository(newTestDB(t), newTestLogger(t))
+	ctx := context.Background()
+
+	if err := repo.Create(ctx, newTestBucket("my-bucket", "owner-1")); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := repo.Delete(ctx, "my-bucket"); err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	if err := repo.Create(ctx, newTestBucket("my-bucket", "owner-2")); err != nil {
+		t.Fatalf("resurrect Create() error = %v", err)
+	}
+
+	got, err := repo.ListByOwner(ctx, "owner-1")
+	if err != nil {
+		t.Fatalf("ListByOwner(owner-1) error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("ListByOwner(owner-1) returned %d buckets, want 0 — leaked owner-2's resurrected bucket: %+v", len(got), got)
+	}
+
+	got, err = repo.ListByOwner(ctx, "owner-2")
+	if err != nil {
+		t.Fatalf("ListByOwner(owner-2) error = %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("ListByOwner(owner-2) returned %d buckets, want 1", len(got))
+	}
+}

@@ -170,6 +170,15 @@ func (r *BoltBucketRepository) Delete(ctx context.Context, name string) error {
 			return ErrNotFound
 		}
 
+		idxKey, err := bolt.OwnerIndexKey(b.OwnerID, name)
+		if err != nil {
+			return fmt.Errorf("build owner index key: %w", err)
+		}
+
+		if err := tx.Bucket([]byte(store.BoltBucketOwnerIdx)).Delete(idxKey); err != nil {
+			return fmt.Errorf("delete owner index: %w", err)
+		}
+
 		objPrefix, err := bolt.ObjectListPrefix(name, "")
 		if err != nil {
 			return fmt.Errorf("build object list prefix: %w", err)
