@@ -1,10 +1,10 @@
 package bolt
 
-func objectKey(bucketName, objectKeyName string) ([]byte, error) {
-	if err := validateKeyComponent("bucket_name", bucketName); err != nil {
+func ObjectKey(bucketName, objectKeyName string) ([]byte, error) {
+	if err := ValidateKeyComponent("bucket_name", bucketName); err != nil {
 		return nil, err
 	}
-	if err := validateKeyComponent("object_key", objectKeyName); err != nil {
+	if err := ValidateKeyComponent("object_key", objectKeyName); err != nil {
 		return nil, err
 	}
 
@@ -15,12 +15,12 @@ func objectKey(bucketName, objectKeyName string) ([]byte, error) {
 	return key, nil
 }
 
-func objectListPrefix(bucketName, userPrefix string) ([]byte, error) {
-	if err := validateKeyComponent("bucket_name", bucketName); err != nil {
+func ObjectListPrefix(bucketName, userPrefix string) ([]byte, error) {
+	if err := ValidateKeyComponent("bucket_name", bucketName); err != nil {
 		return nil, err
 	}
 	if userPrefix != "" {
-		if err := validateKeyComponent("prefix", userPrefix); err != nil {
+		if err := ValidateKeyComponent("prefix", userPrefix); err != nil {
 			return nil, err
 		}
 	}

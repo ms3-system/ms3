@@ -6,7 +6,7 @@ import (
 )
 
 func TestOwnerIndexKey(t *testing.T) {
-	got, err := ownerIndexKey("user-1", "my-bucket")
+	got, err := OwnerIndexKey("user-1", "my-bucket")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,16 +18,16 @@ func TestOwnerIndexKey(t *testing.T) {
 }
 
 func TestOwnerIndexKey_RejectsSeparatorInComponents(t *testing.T) {
-	if _, err := ownerIndexKey("user\x001", "my-bucket"); err == nil {
+	if _, err := OwnerIndexKey("user\x001", "my-bucket"); err == nil {
 		t.Fatal("expected error for owner_id containing separator, got nil")
 	}
-	if _, err := ownerIndexKey("user-1", "my\x00bucket"); err == nil {
+	if _, err := OwnerIndexKey("user-1", "my\x00bucket"); err == nil {
 		t.Fatal("expected error for bucket_name containing separator, got nil")
 	}
 }
 
 func TestOwnerIndexPrefix(t *testing.T) {
-	got, err := ownerIndexPrefix("user-1")
+	got, err := OwnerIndexPrefix("user-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,12 +39,12 @@ func TestOwnerIndexPrefix(t *testing.T) {
 }
 
 func TestOwnerIndexPrefix_IsPrefixOfOwnerIndexKey(t *testing.T) {
-	prefix, err := ownerIndexPrefix("user-1")
+	prefix, err := OwnerIndexPrefix("user-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	fullKey, err := ownerIndexKey("user-1", "my-bucket")
+	fullKey, err := OwnerIndexKey("user-1", "my-bucket")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -55,12 +55,12 @@ func TestOwnerIndexPrefix_IsPrefixOfOwnerIndexKey(t *testing.T) {
 }
 
 func TestOwnerIndexPrefix_DoesNotMatchDifferentOwner(t *testing.T) {
-	prefix, err := ownerIndexPrefix("user-1")
+	prefix, err := OwnerIndexPrefix("user-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	otherOwnerKey, err := ownerIndexKey("user-2", "my-bucket")
+	otherOwnerKey, err := OwnerIndexKey("user-2", "my-bucket")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

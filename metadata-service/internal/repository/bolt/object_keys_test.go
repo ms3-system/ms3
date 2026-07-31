@@ -6,7 +6,7 @@ import (
 )
 
 func TestObjectKey(t *testing.T) {
-	got, err := objectKey("my-bucket", "photos/2024/img.png")
+	got, err := ObjectKey("my-bucket", "photos/2024/img.png")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,16 +18,16 @@ func TestObjectKey(t *testing.T) {
 }
 
 func TestObjectKey_RejectsSeparatorInComponents(t *testing.T) {
-	if _, err := objectKey("my\x00bucket", "key"); err == nil {
+	if _, err := ObjectKey("my\x00bucket", "key"); err == nil {
 		t.Fatal("expected error for bucket_name containing separator, got nil")
 	}
-	if _, err := objectKey("my-bucket", "evil\x00key"); err == nil {
+	if _, err := ObjectKey("my-bucket", "evil\x00key"); err == nil {
 		t.Fatal("expected error for object_key containing separator, got nil")
 	}
 }
 
 func TestObjectListPrefix_EmptyPrefixListsWholeBucket(t *testing.T) {
-	got, err := objectListPrefix("my-bucket", "")
+	got, err := ObjectListPrefix("my-bucket", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestObjectListPrefix_EmptyPrefixListsWholeBucket(t *testing.T) {
 }
 
 func TestObjectListPrefix_WithUserPrefix(t *testing.T) {
-	got, err := objectListPrefix("my-bucket", "photos/")
+	got, err := ObjectListPrefix("my-bucket", "photos/")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,12 +51,12 @@ func TestObjectListPrefix_WithUserPrefix(t *testing.T) {
 }
 
 func TestObjectListPrefix_IsPrefixOfObjectKey(t *testing.T) {
-	prefix, err := objectListPrefix("my-bucket", "photos/")
+	prefix, err := ObjectListPrefix("my-bucket", "photos/")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	fullKey, err := objectKey("my-bucket", "photos/2024/img.png")
+	fullKey, err := ObjectKey("my-bucket", "photos/2024/img.png")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -67,12 +67,12 @@ func TestObjectListPrefix_IsPrefixOfObjectKey(t *testing.T) {
 }
 
 func TestObjectListPrefix_DoesNotMatchDifferentBucket(t *testing.T) {
-	prefix, err := objectListPrefix("bucket-a", "")
+	prefix, err := ObjectListPrefix("bucket-a", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	otherBucketKey, err := objectKey("bucket-b", "img.png")
+	otherBucketKey, err := ObjectKey("bucket-b", "img.png")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -83,12 +83,12 @@ func TestObjectListPrefix_DoesNotMatchDifferentBucket(t *testing.T) {
 }
 
 func TestObjectListPrefix_DoesNotMatchSimilarBucketName(t *testing.T) {
-	prefix, err := objectListPrefix("my-bucket", "")
+	prefix, err := ObjectListPrefix("my-bucket", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	similarBucketKey, err := objectKey("my-bucket-2", "img.png")
+	similarBucketKey, err := ObjectKey("my-bucket-2", "img.png")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
