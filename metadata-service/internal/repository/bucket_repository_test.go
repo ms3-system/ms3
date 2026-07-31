@@ -14,8 +14,8 @@ import (
 	"metadata-service/internal/store"
 )
 
-func newTestBucket(name, ownerID string) model.Bucket {
-	return model.Bucket{
+func newTestBucket(name, ownerID string) *model.Bucket {
+	return &model.Bucket{
 		ID:        "bucket-id-" + name,
 		Name:      name,
 		OwnerID:   ownerID,
@@ -59,7 +59,7 @@ func TestBoltBucketRepository_Create_StampsCreatedAtWhenUnset(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now().UTC()
-	err := repo.Create(ctx, model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1"}) // CreatedAt intentionally omitted
+	err := repo.Create(ctx, &model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1"}) // CreatedAt intentionally omitted
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -82,7 +82,7 @@ func TestBoltBucketRepository_Create_PreservesExplicitCreatedAt(t *testing.T) {
 	ctx := context.Background()
 
 	historical := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	err := repo.Create(ctx, model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1", CreatedAt: historical})
+	err := repo.Create(ctx, &model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1", CreatedAt: historical})
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}

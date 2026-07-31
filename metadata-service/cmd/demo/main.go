@@ -41,30 +41,30 @@ func main() {
 
 	case 1:
 		fmt.Println("--- Step 1: alice creates bucket 'photos' ---")
-		err := buckets.Create(ctx, model.Bucket{ID: "b-photos", Name: "photos", OwnerID: "user-alice"})
+		err := buckets.Create(ctx, &model.Bucket{ID: "b-photos", Name: "photos", OwnerID: "user-alice"})
 		printResult("Create(photos, alice)", err)
 
 	case 2:
 		fmt.Println("--- Step 2: bob creates bucket 'documents' ---")
-		err := buckets.Create(ctx, model.Bucket{ID: "b-documents", Name: "documents", OwnerID: "user-bob"})
+		err := buckets.Create(ctx, &model.Bucket{ID: "b-documents", Name: "documents", OwnerID: "user-bob"})
 		printResult("Create(documents, bob)", err)
 
 	case 3:
 		fmt.Println("--- Step 3: bob tries to create 'photos' too (should be rejected) ---")
-		err := buckets.Create(ctx, model.Bucket{ID: "b-photos-2", Name: "photos", OwnerID: "user-bob"})
+		err := buckets.Create(ctx, &model.Bucket{ID: "b-photos-2", Name: "photos", OwnerID: "user-bob"})
 		printResult("Create(photos, bob) — expect ErrAlreadyExists", err)
 		fmt.Println("Is ErrAlreadyExists:", errors.Is(err, repository.ErrAlreadyExists))
 
 	case 4:
 		fmt.Println("--- Step 4: alice puts two objects into 'photos' ---")
-		err1 := objects.Put(ctx, model.Object{
+		err1 := objects.Put(ctx, &model.Object{
 			ID: "o-vacation", BucketName: "photos", ObjectKey: "vacation.png",
 			SizeBytes: 204800, ETag: "etag-vacation", ContentType: "image/png",
 			StorageRef: "photos/vacation.png", VersionID: "null", IsLatest: true,
 		})
 		printResult("Put(photos/vacation.png)", err1)
 
-		err2 := objects.Put(ctx, model.Object{
+		err2 := objects.Put(ctx, &model.Object{
 			ID: "o-profile", BucketName: "photos", ObjectKey: "profile.jpg",
 			SizeBytes: 51200, ETag: "etag-profile", ContentType: "image/jpeg",
 			StorageRef: "photos/profile.jpg", VersionID: "null", IsLatest: true,
@@ -73,7 +73,7 @@ func main() {
 
 	case 5:
 		fmt.Println("--- Step 5: bob puts one object into 'documents' ---")
-		err := objects.Put(ctx, model.Object{
+		err := objects.Put(ctx, &model.Object{
 			ID: "o-readme", BucketName: "documents", ObjectKey: "readme.txt",
 			SizeBytes: 1024, ETag: "etag-readme", ContentType: "text/plain",
 			StorageRef: "documents/readme.txt", VersionID: "null", IsLatest: true,
@@ -143,7 +143,7 @@ func main() {
 
 	case 13:
 		fmt.Println("--- Step 13: bob resurrects the soft-deleted 'photos' name ---")
-		err := buckets.Create(ctx, model.Bucket{ID: "b-photos-resurrected", Name: "photos", OwnerID: "user-bob"})
+		err := buckets.Create(ctx, &model.Bucket{ID: "b-photos-resurrected", Name: "photos", OwnerID: "user-bob"})
 		printResult("Create(photos, bob) over soft-deleted name", err)
 
 	case 14:

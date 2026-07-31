@@ -29,7 +29,7 @@ func NewBoltBucketRepository(db *bbolt.DB, logger *slog.Logger) *BoltBucketRepos
 	}
 }
 
-func (r *BoltBucketRepository) Create(ctx context.Context, b model.Bucket) error {
+func (r *BoltBucketRepository) Create(ctx context.Context, b *model.Bucket) error {
 	log := r.logger.With(slog.String("bucket_name", b.Name), slog.String("owner_id", b.OwnerID))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
