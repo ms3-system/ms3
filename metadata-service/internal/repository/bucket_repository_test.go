@@ -54,6 +54,48 @@ func TestBoltBucketRepository_Create_DuplicateName(t *testing.T) {
 	}
 }
 
+func TestBoltBucketRepository_Create_StampsCreatedAtWhenUnset(t *testing.T) {
+	repo := NewBoltBucketRepository(newTestDB(t), newTestLogger(t))
+	ctx := context.Background()
+
+	before := time.Now().UTC()
+	err := repo.Create(ctx, model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1"}) // CreatedAt intentionally omitted
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	after := time.Now().UTC()
+
+	got, err := repo.GetByName(ctx, "my-bucket")
+	if err != nil {
+		t.Fatalf("GetByName() error = %v", err)
+	}
+	if got.CreatedAt.IsZero() {
+		t.Fatal("got.CreatedAt is zero, want it stamped to roughly now")
+	}
+	if got.CreatedAt.Before(before) || got.CreatedAt.After(after) {
+		t.Errorf("got.CreatedAt = %v, want between %v and %v", got.CreatedAt, before, after)
+	}
+}
+
+func TestBoltBucketRepository_Create_PreservesExplicitCreatedAt(t *testing.T) {
+	repo := NewBoltBucketRepository(newTestDB(t), newTestLogger(t))
+	ctx := context.Background()
+
+	historical := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	err := repo.Create(ctx, model.Bucket{ID: "b-1", Name: "my-bucket", OwnerID: "owner-1", CreatedAt: historical})
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := repo.GetByName(ctx, "my-bucket")
+	if err != nil {
+		t.Fatalf("GetByName() error = %v", err)
+	}
+	if !got.CreatedAt.Equal(historical) {
+		t.Errorf("got.CreatedAt = %v, want preserved value %v", got.CreatedAt, historical)
+	}
+}
+
 func TestBoltBucketRepository_Create_ResurrectsSoftDeletedName(t *testing.T) {
 	repo := NewBoltBucketRepository(newTestDB(t), newTestLogger(t))
 	ctx := context.Background()

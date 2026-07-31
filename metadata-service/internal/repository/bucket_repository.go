@@ -47,6 +47,10 @@ func (r *BoltBucketRepository) Create(ctx context.Context, b model.Bucket) error
 				slog.Time("previously_deleted_at", *current.DeletedAt))
 		}
 
+		if b.CreatedAt.IsZero() {
+			b.CreatedAt = time.Now().UTC()
+		}
+
 		encoded, err := json.Marshal(b)
 		if err != nil {
 			return fmt.Errorf("marshal bucket: %w", err)
