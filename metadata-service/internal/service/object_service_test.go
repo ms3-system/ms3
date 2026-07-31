@@ -18,6 +18,24 @@ func TestObjectService_PutObject_RejectsEmptyKey(t *testing.T) {
 	}
 }
 
+func TestObjectService_PutObject_RejectsEmptyBucketName(t *testing.T) {
+	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
+
+	_, err := svc.PutObject(context.Background(), "", "key.png", 100, "etag", "image/png", "ref")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("PutObject() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+func TestObjectService_PutObject_RejectsNegativeSize(t *testing.T) {
+	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
+
+	_, err := svc.PutObject(context.Background(), "my-bucket", "key.png", -1, "etag", "image/png", "ref")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("PutObject() error = %v, want ErrInvalidInput", err)
+	}
+}
+
 func TestObjectService_PutObject_RejectsEmptyStorageRef(t *testing.T) {
 	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
 
@@ -83,12 +101,30 @@ func TestObjectService_GetObject_RejectsEmptyKey(t *testing.T) {
 	}
 }
 
+func TestObjectService_GetObject_RejectsEmptyBucketName(t *testing.T) {
+	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
+
+	_, err := svc.GetObject(context.Background(), "", "photo.png")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("GetObject() error = %v, want ErrInvalidInput", err)
+	}
+}
+
 func TestObjectService_ListObjects_RejectsEmptyBucketName(t *testing.T) {
 	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
 
 	_, err := svc.ListObjects(context.Background(), "", "", 10)
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("ListObjects() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+func TestObjectService_DeleteObject_RejectsEmptyBucketName(t *testing.T) {
+	svc := NewObjectService(&fakeObjectRepository{}, &fakeBucketRepository{}, newTestLogger(t))
+
+	err := svc.DeleteObject(context.Background(), "", "photo.png")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("DeleteObject() error = %v, want ErrInvalidInput", err)
 	}
 }
 
