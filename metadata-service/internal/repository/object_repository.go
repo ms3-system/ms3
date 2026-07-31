@@ -38,6 +38,10 @@ func (r *BoltObjectRepository) Put(ctx context.Context, o model.Object) error {
 			return fmt.Errorf("build object key: %w", err)
 		}
 
+		if o.CreatedAt.IsZero() {
+			o.CreatedAt = time.Now().UTC()
+		}
+
 		encoded, err := json.Marshal(o)
 		if err != nil {
 			return fmt.Errorf("marshal object: %w", err)

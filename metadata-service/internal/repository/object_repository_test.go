@@ -70,6 +70,29 @@ func TestBoltObjectRepository_Put_OverwritesExisting(t *testing.T) {
 	}
 }
 
+func TestBoltObjectRepository_Put_StampsCreatedAtWhenUnset(t *testing.T) {
+	repo := NewBoltObjectRepository(newTestDB(t), newTestLogger(t))
+	ctx := context.Background()
+
+	before := time.Now().UTC()
+	err := repo.Put(ctx, model.Object{ID: "o-1", BucketName: "my-bucket", ObjectKey: "photo.png"}) // CreatedAt intentionally omitted
+	if err != nil {
+		t.Fatalf("Put() error = %v", err)
+	}
+	after := time.Now().UTC()
+
+	got, err := repo.Get(ctx, "my-bucket", "photo.png")
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if got.CreatedAt.IsZero() {
+		t.Fatal("got.CreatedAt is zero, want it stamped to roughly now")
+	}
+	if got.CreatedAt.Before(before) || got.CreatedAt.After(after) {
+		t.Errorf("got.CreatedAt = %v, want between %v and %v", got.CreatedAt, before, after)
+	}
+}
+
 func TestBoltObjectRepository_Get_NotFound(t *testing.T) {
 	repo := NewBoltObjectRepository(newTestDB(t), newTestLogger(t))
 
