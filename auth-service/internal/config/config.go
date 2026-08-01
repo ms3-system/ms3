@@ -9,12 +9,14 @@ import (
 )
 
 const masterKeySize = 32 // AES-256
+const defaultServerPort = "8082"
 
 type Config struct {
 	JWTSecret     string
 	MasterKey     []byte
 	InternalToken string
 	DBPath        string
+	ServerPort    string
 }
 
 func Load() (Config, error) {
@@ -45,10 +47,16 @@ func Load() (Config, error) {
 		dbPath = store.DefaultDBPath
 	}
 
+	serverPort := os.Getenv("AUTH_SERVICE_SERVER_PORT")
+	if serverPort == "" {
+		serverPort = defaultServerPort
+	}
+
 	return Config{
 		JWTSecret:     jwtSecret,
 		MasterKey:     masterKey,
 		InternalToken: internalToken,
 		DBPath:        dbPath,
+		ServerPort:    serverPort,
 	}, nil
 }
