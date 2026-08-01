@@ -1,8 +1,8 @@
 package api
 
 import (
-	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -10,11 +10,19 @@ import (
 )
 
 type Handler struct {
-	store storage.Backend
+	store  storage.Backend
+	logger *slog.Logger
 }
 
-func NewHandler(store storage.Backend) *Handler {
-	return &Handler{store: store}
+func NewHandler(store storage.Backend, logger *slog.Logger) *Handler {
+	return &Handler{
+		store:  store,
+		logger: logger.With(slog.String("component", "api.handler")),
+	}
+}
+
+func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {
@@ -24,13 +32,12 @@ func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, size, err := h.store.Write(r.Context(), namespace, r.Body)
 	if err != nil {
-		http.Error(w, "Failed to write data", http.StatusInternalServerError)
+		h.logger.Error("write failed", slog.Any("error", err))
+		writeError(w, http.StatusInternalServerError, "failed to write data")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"hash":   hash,
 		"size":   size,
 		"bucket": namespace,
@@ -43,13 +50,15 @@ func (h *Handler) HandleDownload(w http.ResponseWriter, r *http.Request) {
 
 	file, err := h.store.Read(r.Context(), namespace, hash)
 	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "object not found")
 		return
 	}
 	defer file.Close()
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	io.Copy(w, file)
+	if _, err := io.Copy(w, file); err != nil {
+		h.logger.Warn("download interrupted", slog.Any("error", err))
+	}
 }
 
 func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +72,8 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, "Failed to delete physical file", http.StatusInternalServerError)
+		h.logger.Error("delete failed", slog.Any("error", err))
+		writeError(w, http.StatusInternalServerError, "failed to delete physical file")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
