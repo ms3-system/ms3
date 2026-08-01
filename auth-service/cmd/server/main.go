@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"auth-service/internal/api"
 	"auth-service/internal/config"
@@ -13,7 +14,13 @@ import (
 	"auth-service/internal/store"
 )
 
-const listenAddr = ":8082"
+const (
+	listenAddr = ":8082"
+
+	readHeaderTimeout = 5 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 120 * time.Second
+)
 
 func main() {
 	cfg, err := config.Load()
@@ -37,13 +44,24 @@ func main() {
 	credentialRepo := repository.NewBoltCredentialRepository(st.DB(), logger)
 
 	userSvc := service.NewUserService(userRepo, logger)
-	authSvc := service.NewAuthService(userRepo, []byte(cfg.JWTSecret), logger)
+	authSvc, err := service.NewAuthService(userRepo, []byte(cfg.JWTSecret), logger)
+	if err != nil {
+		log.Fatalf("Error creating auth service: %v", err)
+	}
 	credentialSvc := service.NewCredentialService(credentialRepo, userRepo, cfg.MasterKey, logger)
 
 	router := api.NewRouter(userSvc, authSvc, credentialSvc, cfg.InternalToken, logger)
 
+	srv := &http.Server{
+		Addr:              listenAddr,
+		Handler:           router,
+		ReadHeaderTimeout: readHeaderTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+
 	logger.Info("auth-service listening", slog.String("addr", listenAddr))
-	if err := http.ListenAndServe(listenAddr, router); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Error running server: %v", err)
 	}
 }
