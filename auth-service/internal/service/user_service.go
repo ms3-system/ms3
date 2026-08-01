@@ -15,7 +15,14 @@ import (
 
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
 
-const minPasswordLength = 8
+const (
+	minPasswordLength = 8
+	// maxPasswordLength matches bcrypt's hard limit: GenerateFromPassword
+	// rejects anything longer with ErrPasswordTooLong. Checking it here
+	// keeps that a normal 400 (ErrInvalidInput) instead of a 500 leaking a
+	// bcrypt-specific error out of the service layer.
+	maxPasswordLength = 72
+)
 
 type userService struct {
 	users  repository.UserRepository
@@ -39,6 +46,10 @@ func (s *userService) Register(ctx context.Context, username, password string) (
 	if len(password) < minPasswordLength {
 		log.Debug("register rejected: password too short")
 		return model.User{}, fmt.Errorf("%w: password must be at least %d characters", ErrInvalidInput, minPasswordLength)
+	}
+	if len(password) > maxPasswordLength {
+		log.Debug("register rejected: password too long")
+		return model.User{}, fmt.Errorf("%w: password must be at most %d bytes", ErrInvalidInput, maxPasswordLength)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)

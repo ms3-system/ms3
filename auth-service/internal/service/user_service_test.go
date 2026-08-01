@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -60,6 +61,24 @@ func TestUserService_Register_PasswordTooShort(t *testing.T) {
 	_, err := svc.Register(context.Background(), "alice", "short")
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("Register() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+func TestUserService_Register_PasswordTooLong(t *testing.T) {
+	svc := NewUserService(&fakeUserRepository{}, newTestLogger(t))
+
+	_, err := svc.Register(context.Background(), "alice", strings.Repeat("a", maxPasswordLength+1))
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("Register() error = %v, want ErrInvalidInput", err)
+	}
+}
+
+func TestUserService_Register_PasswordAtMaxLengthIsAccepted(t *testing.T) {
+	svc := NewUserService(&fakeUserRepository{}, newTestLogger(t))
+
+	_, err := svc.Register(context.Background(), "alice", strings.Repeat("a", maxPasswordLength))
+	if err != nil {
+		t.Fatalf("Register() error = %v, want nil", err)
 	}
 }
 
