@@ -17,6 +17,7 @@ import (
 const (
 	listenAddr = ":8082"
 
+	readTimeout       = 30 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	writeTimeout      = 30 * time.Second
 	idleTimeout       = 120 * time.Second
@@ -55,6 +56,7 @@ func main() {
 	srv := &http.Server{
 		Addr:              listenAddr,
 		Handler:           router,
+		ReadTimeout:       readTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
