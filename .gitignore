@@ -1,0 +1,5 @@
+.idea
+/docs/*
+!/docs/pre-reqs.md
+!/docs/local-integration-testing.md
+!/docs/service-consistency-changes.md
