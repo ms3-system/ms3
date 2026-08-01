@@ -16,6 +16,12 @@ const (
 
 	tokenTypeAccess  = "access"
 	tokenTypeRefresh = "refresh"
+
+	// minJWTSecretLength matches HS256's 256-bit output size (RFC 2104:
+	// an HMAC key shorter than the hash output doesn't add security
+	// margin). Enforced in NewAuthService, not here — this file stays
+	// focused on constructing jwtIssuer from an already-validated secret.
+	minJWTSecretLength = 32
 )
 
 type tokenClaims struct {

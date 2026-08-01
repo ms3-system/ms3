@@ -208,6 +208,46 @@ func TestCredentialService_LookupCredential_NotFound(t *testing.T) {
 	}
 }
 
+func TestCredentialService_GetCredentialOwner(t *testing.T) {
+	credRepo := &fakeCredentialRepository{
+		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+			return model.Credential{AccessKey: accessKey, UserID: "user-1"}, nil
+		},
+	}
+	svc := NewCredentialService(credRepo, &fakeUserRepository{}, testMasterKey(), newTestLogger(t))
+
+	ownerID, err := svc.GetCredentialOwner(context.Background(), "AKIAEXAMPLE")
+	if err != nil {
+		t.Fatalf("GetCredentialOwner() error = %v", err)
+	}
+	if ownerID != "user-1" {
+		t.Errorf("GetCredentialOwner() = %q, want %q", ownerID, "user-1")
+	}
+}
+
+func TestCredentialService_GetCredentialOwner_NotFound(t *testing.T) {
+	credRepo := &fakeCredentialRepository{
+		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+			return model.Credential{}, repository.ErrNotFound
+		},
+	}
+	svc := NewCredentialService(credRepo, &fakeUserRepository{}, testMasterKey(), newTestLogger(t))
+
+	_, err := svc.GetCredentialOwner(context.Background(), "missing")
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("GetCredentialOwner() error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestCredentialService_GetCredentialOwner_EmptyAccessKey(t *testing.T) {
+	svc := NewCredentialService(&fakeCredentialRepository{}, &fakeUserRepository{}, testMasterKey(), newTestLogger(t))
+
+	_, err := svc.GetCredentialOwner(context.Background(), "")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("GetCredentialOwner() error = %v, want ErrInvalidInput", err)
+	}
+}
+
 func TestCredentialService_RevokeCredential(t *testing.T) {
 	var revoked string
 	credRepo := &fakeCredentialRepository{

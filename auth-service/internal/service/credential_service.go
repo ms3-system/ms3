@@ -103,6 +103,18 @@ func (s *credentialService) RevokeCredential(ctx context.Context, accessKey stri
 	return s.credentials.Revoke(ctx, accessKey)
 }
 
+func (s *credentialService) GetCredentialOwner(ctx context.Context, accessKey string) (string, error) {
+	if accessKey == "" {
+		return "", fmt.Errorf("%w: access key is required", ErrInvalidInput)
+	}
+
+	c, err := s.credentials.GetByAccessKey(ctx, accessKey)
+	if err != nil {
+		return "", err
+	}
+	return c.UserID, nil
+}
+
 func (s *credentialService) LookupCredential(ctx context.Context, accessKey string) (LookedUpCredential, error) {
 	if accessKey == "" {
 		return LookedUpCredential{}, fmt.Errorf("%w: access key is required", ErrInvalidInput)

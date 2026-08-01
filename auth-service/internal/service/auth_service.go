@@ -17,12 +17,16 @@ type authService struct {
 	logger *slog.Logger
 }
 
-func NewAuthService(users repository.UserRepository, jwtSecret []byte, logger *slog.Logger) AuthService {
+func NewAuthService(users repository.UserRepository, jwtSecret []byte, logger *slog.Logger) (AuthService, error) {
+	if len(jwtSecret) < minJWTSecretLength {
+		return nil, fmt.Errorf("jwt secret must be at least %d bytes, got %d", minJWTSecretLength, len(jwtSecret))
+	}
+
 	return &authService{
 		users:  users,
 		jwt:    newJWTIssuer(jwtSecret),
 		logger: logger.With(slog.String("component", "service.auth")),
-	}
+	}, nil
 }
 
 func (s *authService) Login(ctx context.Context, username, password string) (string, string, error) {
@@ -87,4 +91,12 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (string,
 
 	s.logger.Info("access token refreshed", slog.String("user_id", u.ID))
 	return access, nil
+}
+
+func (s *authService) VerifyAccessToken(tokenString string) (Principal, error) {
+	claims, err := s.jwt.parse(tokenString, tokenTypeAccess)
+	if err != nil {
+		return Principal{}, ErrInvalidCredentials
+	}
+	return Principal{UserID: claims.Subject, IsAdmin: claims.IsAdmin}, nil
 }
