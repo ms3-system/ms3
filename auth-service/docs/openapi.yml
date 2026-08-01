@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: auth-service
+  description: >
+    Identity, JWT session auth, and S3 access-key/secret-key issuance for ms3.
+    See docs/design.md for the full design, including why /internal/credentials/{access_key}
+    must never be reachable outside the Docker network.
+  version: "1.0.0"
+
+servers:
+  - url: http://auth-service:8082
+    description: Docker-compose internal network (no published port)
+
+tags:
+  - name: auth
+    description: JWT session login/refresh (console/human use, stateless)
+  - name: users
+    description: User account management
+  - name: credentials
+    description: S3 access-key / secret-key issuance and revocation
+  - name: internal
+    description: >
+      MUST NOT be reachable outside the Docker network. Gated behind X-Internal-Token.
+      Called only by api-service to verify SigV4 signatures.
+  - name: health
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Liveness check
+      operationId: healthz
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /v1/users:
+    post:
+      tags: [users]
+      summary: Register a new user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/users/{id}:
+    get:
+      tags: [users]
+      summary: Get a user by ID
+      description: Requires a valid access token belonging to this user or an admin.
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/users/{id}/credentials:
+    post:
+      tags: [credentials]
+      summary: Issue a new S3 access key / secret key pair for a user
+      description: >
+        The plaintext secret_key in the response is returned exactly once and can never be
+        retrieved again — identical to AWS's own behavior. Only the encrypted form is stored.
+        Requires a valid access token belonging to this user or an admin.
+      operationId: createCredential
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "201":
+          description: Credential issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialIssuedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/access-keys/{access_key}:
+    delete:
+      tags: [credentials]
+      summary: Revoke an access key (soft-revoke)
+      description: >
+        Requires a valid access token belonging to the credential's owner or an admin.
+        Ownership is resolved server-side from the access key.
+      operationId: revokeCredential
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AccessKey"
+      responses:
+        "204":
+          description: Revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange username/password for a JWT access + refresh token pair
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Exchange a valid refresh token for a new access token
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+        "401":
+          description: Refresh token missing, expired, malformed, or not a refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /internal/credentials/{access_key}:
+    get:
+      tags: [internal]
+      summary: Decrypted credential lookup — internal callers only
+      description: >
+        Returns the DECRYPTED secret key so api-service can recompute a SigV4 HMAC.
+        This endpoint MUST stay unpublished from the Docker network and MUST be gated behind
+        AUTH_SERVICE_INTERNAL_TOKEN. Never expose this route on any publicly reachable listener.
+      operationId: lookupCredentialInternal
+      security:
+        - internalToken: []
+      parameters:
+        - $ref: "#/components/parameters/AccessKey"
+      responses:
+        "200":
+          description: Decrypted credential
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalCredentialResponse"
+        "401":
+          description: Missing or invalid X-Internal-Token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    UserID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AccessKey:
+      name: access_key
+      in: path
+      required: true
+      schema:
+        type: string
+        example: AKIAIOSFODNN7EXAMPLE
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing, malformed, or invalid/expired access token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated, but neither the resource owner nor an admin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Access token from POST /v1/auth/login or /v1/auth/refresh. The caller must be the
+        resource's own user (matching `sub`) or a user with `is_admin: true`.
+    internalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+      description: >
+        Shared secret from AUTH_SERVICE_INTERNAL_TOKEN. Defense-in-depth on top of the
+        route never being reachable outside the compose network in the first place.
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        is_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+      required: [id, username, is_admin, created_at]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+      required: [username, password]
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+      required: [username, password]
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+      required: [access_token, refresh_token]
+
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+      required: [refresh_token]
+
+    RefreshResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+      required: [access_token]
+
+    CredentialIssuedResponse:
+      type: object
+      description: >
+        secret_key is plaintext and shown exactly once — it is never retrievable again after
+        this response.
+      properties:
+        access_key:
+          type: string
+          example: AKIAIOSFODNN7EXAMPLE
+        secret_key:
+          type: string
+          description: One-time plaintext secret. Store it now — it cannot be recovered later.
+        user_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+      required: [access_key, secret_key, user_id, created_at]
+
+    InternalCredentialResponse:
+      type: object
+      description: Decrypted secret material — internal callers only, never logged.
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        secret_key:
+          type: string
+          description: Decrypted plaintext secret key.
+      required: [user_id, secret_key]
