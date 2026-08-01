@@ -1,0 +1,85 @@
+services:
+  api:
+    build:
+      context: ./api-service
+    image: ms3/api-service:v0.1.0
+    container_name: api-service
+    ports:
+      - "8080:8080"
+    networks:
+      - ms3-net
+    depends_on:
+      - auth
+      - data
+      - meta
+    env_file:
+      - api-service/.env.example
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+  auth:
+    build:
+      context: ./auth-service
+    image: ms3/auth-service:v0.1.0
+    container_name: auth-service
+    ports:
+      - "8082:8082"
+    networks:
+      - ms3-net
+    env_file:
+      - ./auth-service/.env
+    volumes:
+      - ./auth-service/data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+  data:
+    build:
+      context: ./data-service
+    image: ms3/data-service:v0.1.0
+    container_name: data-service
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data-service/data:/app/data
+    networks:
+      - ms3-net
+    env_file:
+      - data-service/.env.example
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+  meta:
+    build:
+      context: ./metadata-service
+    image: ms3/metadata-service:v0.1.0
+    container_name: metadata-service
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./metadata-service/data:/app/data
+    networks:
+      - ms3-net
+    env_file:
+      - metadata-service/.env.example
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
+networks:
+  ms3-net:
