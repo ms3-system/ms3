@@ -11,7 +11,6 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/api-service ./cmd/server/main.go
 
 
-
 FROM alpine:3.23
 
 WORKDIR /app
@@ -23,5 +22,7 @@ COPY --from=builder /app/api-service .
 RUN chown -R User:ApiServiceGroup /app
 
 USER User
+
+EXPOSE 8080
 
 ENTRYPOINT ["./api-service"]
