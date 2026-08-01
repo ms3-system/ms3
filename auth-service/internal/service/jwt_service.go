@@ -70,7 +70,7 @@ func (j jwtIssuer) mintRefreshToken(u model.User) (string, error) {
 func (j jwtIssuer) parse(tokenString, wantType string) (*tokenClaims, error) {
 	claims := &tokenClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return j.secret, nil
@@ -80,6 +80,9 @@ func (j jwtIssuer) parse(tokenString, wantType string) (*tokenClaims, error) {
 	}
 	if !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+	if claims.ExpiresAt == nil {
+		return nil, errors.New("missing exp claim")
 	}
 	if claims.Type != wantType {
 		return nil, fmt.Errorf("unexpected token type %q, want %q", claims.Type, wantType)
