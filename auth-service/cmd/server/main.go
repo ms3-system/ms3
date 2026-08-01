@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"auth-service/internal/api"
@@ -15,12 +19,11 @@ import (
 )
 
 const (
-	listenAddr = ":8082"
-
 	readTimeout       = 30 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	writeTimeout      = 30 * time.Second
 	idleTimeout       = 120 * time.Second
+	shutdownTimeout   = 10 * time.Second
 )
 
 func main() {
@@ -53,8 +56,9 @@ func main() {
 
 	router := api.NewRouter(userSvc, authSvc, credentialSvc, cfg.InternalToken, logger)
 
+	addr := ":" + cfg.ServerPort
 	srv := &http.Server{
-		Addr:              listenAddr,
+		Addr:              addr,
 		Handler:           router,
 		ReadTimeout:       readTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
@@ -62,8 +66,28 @@ func main() {
 		IdleTimeout:       idleTimeout,
 	}
 
-	logger.Info("auth-service listening", slog.String("addr", listenAddr))
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("Error running server: %v", err)
+	go func() {
+		logger.Info("auth-service listening", slog.String("addr", addr))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("server error", slog.Any("error", err))
+			os.Exit(1)
+		}
+	}()
+
+	waitForShutdown(srv, logger)
+}
+
+func waitForShutdown(srv *http.Server, logger *slog.Logger) {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+
+	logger.Info("shutting down")
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("graceful shutdown failed", slog.Any("error", err))
 	}
 }

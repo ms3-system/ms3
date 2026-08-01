@@ -1,11 +1,16 @@
 package api
 
-func (s *Server) routes() {
-	s.Router.Put("/buckets/{bucket}", s.handleCreateBucket)
-	s.Router.Delete("/buckets/{bucket}", s.handleDeleteBucket)
-	s.Router.Get("/buckets/{bucket}", s.handleListObjects)
+import "github.com/go-chi/chi/v5"
 
-	s.Router.Put("/buckets/{bucket}/objects/{object}", s.handlePutObject)
-	s.Router.Get("/buckets/{bucket}/objects/{object}", s.handleGetObject)
-	s.Router.Delete("/buckets/{bucket}/objects/{object}", s.handleDeleteObject)
+func (s *Server) routes(r chi.Router) {
+	r.Get("/", s.handleListBuckets)
+
+	r.Put("/buckets/{bucket}", s.handleCreateBucket)
+	r.Delete("/buckets/{bucket}", s.handleDeleteBucket)
+	r.Get("/buckets/{bucket}", s.handleListObjects)
+
+	r.Put("/buckets/{bucket}/objects/*", s.handlePutObject)
+	r.Get("/buckets/{bucket}/objects/*", s.handleGetObject)
+	r.Head("/buckets/{bucket}/objects/*", s.handleHeadObject)
+	r.Delete("/buckets/{bucket}/objects/*", s.handleDeleteObject)
 }

@@ -17,8 +17,11 @@ type LocalStore struct {
 	baseDir string
 }
 
-func NewLocalStore(baseDir string) *LocalStore {
-	return &LocalStore{baseDir: baseDir}
+func NewLocalStore(baseDir string) (*LocalStore, error) {
+	if err := os.MkdirAll(filepath.Join(baseDir, "tmp"), 0o755); err != nil {
+		return nil, err
+	}
+	return &LocalStore{baseDir: baseDir}, nil
 }
 
 func (s *LocalStore) Write(ctx context.Context, namespace string, r io.Reader) (string, int64, error) {
@@ -40,7 +43,10 @@ func (s *LocalStore) Write(ctx context.Context, namespace string, r io.Reader) (
 	hash := hex.EncodeToString(hasher.Sum(nil))
 	finalPath := s.getShardedPath(namespace, hash)
 
-	os.MkdirAll(filepath.Dir(finalPath), 0755)
+	if err := os.MkdirAll(filepath.Dir(finalPath), 0755); err != nil {
+		os.Remove(tmpFile.Name())
+		return "", 0, err
+	}
 
 	err = os.Rename(tmpFile.Name(), finalPath)
 	return hash, size, err
