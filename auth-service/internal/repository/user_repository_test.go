@@ -43,6 +43,20 @@ func TestBoltUserRepository_CreateRejectsDuplicateUsername(t *testing.T) {
 	}
 }
 
+func TestBoltUserRepository_CreateRejectsDuplicateID(t *testing.T) {
+	repo := NewBoltUserRepository(newTestDB(t), newTestLogger(t))
+	ctx := context.Background()
+
+	if err := repo.Create(ctx, &model.User{ID: "user-1", Username: "alice"}); err != nil {
+		t.Fatalf("first Create() error = %v", err)
+	}
+
+	err := repo.Create(ctx, &model.User{ID: "user-1", Username: "bob"})
+	if !errors.Is(err, ErrAlreadyExists) {
+		t.Fatalf("Create() error = %v, want ErrAlreadyExists", err)
+	}
+}
+
 func TestBoltUserRepository_GetByID_NotFound(t *testing.T) {
 	repo := NewBoltUserRepository(newTestDB(t), newTestLogger(t))
 

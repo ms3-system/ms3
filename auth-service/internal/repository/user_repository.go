@@ -47,6 +47,11 @@ func (r *BoltUserRepository) Create(ctx context.Context, u *model.User) error {
 			return ErrAlreadyExists
 		}
 
+		users := tx.Bucket([]byte(store.BoltBucketUsers))
+		if users.Get(userKey) != nil {
+			return ErrAlreadyExists
+		}
+
 		if u.CreatedAt.IsZero() {
 			u.CreatedAt = time.Now().UTC()
 		}
@@ -56,7 +61,7 @@ func (r *BoltUserRepository) Create(ctx context.Context, u *model.User) error {
 			return fmt.Errorf("marshal user: %w", err)
 		}
 
-		if err := tx.Bucket([]byte(store.BoltBucketUsers)).Put(userKey, encoded); err != nil {
+		if err := users.Put(userKey, encoded); err != nil {
 			return fmt.Errorf("put user record: %w", err)
 		}
 		if err := usernames.Put(usernameKey, []byte(u.ID)); err != nil {
