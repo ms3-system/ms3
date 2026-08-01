@@ -16,7 +16,9 @@ FROM alpine:3.23
 
 WORKDIR /app
 
-RUN addgroup -S DataServiceGroup && adduser -S User -G DataServiceGroup
+RUN addgroup -S DataServiceGroup \
+    && adduser -S User -G DataServiceGroup \
+    && install -d -o User -g DataServiceGroup /data
 
 COPY --from=builder /app/data-service .
 
