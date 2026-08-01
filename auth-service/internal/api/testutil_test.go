@@ -37,8 +37,9 @@ func (f *fakeUserService) GetUser(ctx context.Context, id string) (model.User, e
 }
 
 type fakeAuthService struct {
-	loginFn   func(ctx context.Context, username, password string) (string, string, error)
-	refreshFn func(ctx context.Context, refreshToken string) (string, error)
+	loginFn             func(ctx context.Context, username, password string) (string, string, error)
+	refreshFn           func(ctx context.Context, refreshToken string) (string, error)
+	verifyAccessTokenFn func(tokenString string) (service.Principal, error)
 }
 
 var _ service.AuthService = (*fakeAuthService)(nil)
@@ -57,10 +58,18 @@ func (f *fakeAuthService) Refresh(ctx context.Context, refreshToken string) (str
 	return "", nil
 }
 
+func (f *fakeAuthService) VerifyAccessToken(tokenString string) (service.Principal, error) {
+	if f.verifyAccessTokenFn != nil {
+		return f.verifyAccessTokenFn(tokenString)
+	}
+	return service.Principal{}, service.ErrInvalidCredentials
+}
+
 type fakeCredentialService struct {
-	issueFn  func(ctx context.Context, userID string) (service.IssuedCredential, error)
-	revokeFn func(ctx context.Context, accessKey string) error
-	lookupFn func(ctx context.Context, accessKey string) (service.LookedUpCredential, error)
+	issueFn    func(ctx context.Context, userID string) (service.IssuedCredential, error)
+	revokeFn   func(ctx context.Context, accessKey string) error
+	lookupFn   func(ctx context.Context, accessKey string) (service.LookedUpCredential, error)
+	getOwnerFn func(ctx context.Context, accessKey string) (string, error)
 }
 
 var _ service.CredentialService = (*fakeCredentialService)(nil)
@@ -84,4 +93,11 @@ func (f *fakeCredentialService) LookupCredential(ctx context.Context, accessKey 
 		return f.lookupFn(ctx, accessKey)
 	}
 	return service.LookedUpCredential{}, nil
+}
+
+func (f *fakeCredentialService) GetCredentialOwner(ctx context.Context, accessKey string) (string, error) {
+	if f.getOwnerFn != nil {
+		return f.getOwnerFn(ctx, accessKey)
+	}
+	return "", nil
 }

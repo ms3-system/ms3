@@ -29,13 +29,17 @@ func NewRouter(users service.UserService, auth service.AuthService, credentials 
 		r.Route("/users", func(r chi.Router) {
 			r.Post("/", h.createUser)
 
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", h.getUser)
-				r.Post("/credentials", h.createCredential)
+			r.Group(func(r chi.Router) {
+				r.Use(requireAuth(auth, logger))
+
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", h.getUser)
+					r.Post("/credentials", h.createCredential)
+				})
 			})
 		})
 
-		r.Delete("/access-keys/{access_key}", h.revokeCredential)
+		r.With(requireAuth(auth, logger)).Delete("/access-keys/{access_key}", h.revokeCredential)
 
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", h.login)

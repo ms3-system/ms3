@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -32,7 +31,7 @@ func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		h.logger.Debug("create user rejected: invalid JSON body", slog.Any("error", err))
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid JSON body"})
 		return
@@ -50,6 +49,10 @@ func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	if !requireSelfOrAdmin(w, r, id) {
+		return
+	}
+
 	u, err := h.users.GetUser(r.Context(), id)
 	if err != nil {
 		writeError(w, h.logger, err)
@@ -61,6 +64,10 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "id")
+
+	if !requireSelfOrAdmin(w, r, userID) {
+		return
+	}
 
 	c, err := h.credentials.IssueCredential(r.Context(), userID)
 	if err != nil {
@@ -74,6 +81,27 @@ func (h *Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) revokeCredential(w http.ResponseWriter, r *http.Request) {
 	accessKey := chi.URLParam(r, "access_key")
 
+	// Ownership is only known once the credential is looked up, so the
+	// self-or-admin check happens here rather than via requireSelfOrAdmin
+	// on the target path param (there isn't one — the path only has the
+	// access key).
+	principal, ok := principalFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthorized"})
+		return
+	}
+	if !principal.IsAdmin {
+		ownerID, err := h.credentials.GetCredentialOwner(r.Context(), accessKey)
+		if err != nil {
+			writeError(w, h.logger, err)
+			return
+		}
+		if ownerID != principal.UserID {
+			writeJSON(w, http.StatusForbidden, errorResponse{Error: "forbidden"})
+			return
+		}
+	}
+
 	if err := h.credentials.RevokeCredential(r.Context(), accessKey); err != nil {
 		writeError(w, h.logger, err)
 		return
@@ -84,7 +112,7 @@ func (h *Handler) revokeCredential(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		h.logger.Debug("login rejected: invalid JSON body", slog.Any("error", err))
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid JSON body"})
 		return
@@ -101,7 +129,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	var req refreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		h.logger.Debug("refresh rejected: invalid JSON body", slog.Any("error", err))
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid JSON body"})
 		return

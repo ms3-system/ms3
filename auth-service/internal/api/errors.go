@@ -14,6 +14,20 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
+// maxRequestBodyBytes bounds request bodies decoded by decodeJSON, so a
+// client can't force a handler to buffer an unbounded body into memory.
+const maxRequestBodyBytes = 1 << 20 // 1 MiB
+
+// decodeJSON decodes r.Body into dst, capping the body size and rejecting
+// unknown fields so a typo'd request field fails loudly instead of being
+// silently ignored.
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	return dec.Decode(dst)
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
