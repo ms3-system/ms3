@@ -33,8 +33,6 @@ type MetadataClient interface {
 	GetObjectMeta(ctx context.Context, bucket, key string) (*ObjectInfo, error)
 	DeleteObjectMeta(ctx context.Context, bucket, key string) error
 
-	// Ping reports whether metadata-service is reachable and healthy, so
-	// api-service's own readiness probe can reflect this dependency.
 	Ping(ctx context.Context) error
 }
 
@@ -43,8 +41,6 @@ type DataClient interface {
 	Read(ctx context.Context, namespace, hash string) (io.ReadCloser, error)
 	Delete(ctx context.Context, namespace, hash string) error
 
-	// Ping reports whether data-service is reachable and healthy, so
-	// api-service's own readiness probe can reflect this dependency.
 	Ping(ctx context.Context) error
 }
 
@@ -61,8 +57,6 @@ type Credential struct {
 type AuthClient interface {
 	LookupCredential(ctx context.Context, accessKey string) (*Credential, error)
 
-	// Ping reports whether auth-service is reachable and healthy, so
-	// api-service's own readiness probe can reflect this dependency.
 	Ping(ctx context.Context) error
 }
 

@@ -12,8 +12,6 @@ import (
 	"metadata-service/internal/service"
 )
 
-// ReadinessChecker is implemented by dependencies (the bolt store) whose
-// availability determines whether this service is ready to serve traffic.
 type ReadinessChecker interface {
 	Ready(ctx context.Context) error
 }
@@ -38,17 +36,10 @@ func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// healthzLive backs the liveness probe: it only reports whether the
-// process itself is up and able to answer HTTP requests, with no
-// dependency checks, so a slow/degraded dependency never causes k8s to
-// kill and restart an otherwise-healthy pod.
 func (h *Handler) healthzLive(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// healthzReady backs the readiness probe: it checks that the store is
-// reachable, so k8s stops routing traffic to this pod while its
-// dependency is down instead of returning errors to callers.
 func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
 	if h.ready != nil {
 		if err := h.ready.Ready(r.Context()); err != nil {
@@ -60,12 +51,6 @@ func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// healthzStartup backs the startup probe: it uses the same dependency
-// check as readiness, since all of this service's initialization (opening
-// the store, wiring services) happens synchronously in main() before the
-// HTTP server starts accepting connections. It exists as a separate
-// endpoint so k8s can apply a more lenient failureThreshold during boot
-// without weakening the steady-state readiness/liveness probes.
 func (h *Handler) healthzStartup(w http.ResponseWriter, r *http.Request) {
 	h.healthzReady(w, r)
 }

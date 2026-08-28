@@ -15,8 +15,6 @@ import (
 
 const requestTimeout = 30 * time.Second
 
-// readinessTimeout bounds how long the readiness/startup probes wait on
-// all three downstream dependencies combined.
 const readinessTimeout = 5 * time.Second
 
 type Server struct {
@@ -59,19 +57,10 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleHealthzLive backs the liveness probe: it only reports whether the
-// process itself is up and able to answer HTTP requests, with no
-// dependency checks, so a downstream service being slow or down never
-// causes k8s to kill and restart an otherwise-healthy gateway pod.
 func (s *Server) handleHealthzLive(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleHealthzReady backs the readiness probe: api-service is a pure
-// gateway with no state of its own, so "ready" means all three downstream
-// services it proxies to (metadata, data, auth) are reachable. Pings run
-// concurrently and are bounded by readinessTimeout so one hung dependency
-// can't stall the probe past its own budget.
 func (s *Server) handleHealthzReady(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
 	defer cancel()
@@ -106,14 +95,6 @@ func (s *Server) handleHealthzReady(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleHealthzStartup backs the startup probe: it uses the same
-// dependency check as readiness, since api-service's own initialization
-// (wiring the downstream HTTP clients) happens synchronously in main()
-// before the HTTP server starts accepting connections — the only thing
-// left to confirm at boot is that those downstream services are actually
-// reachable. It exists as a separate endpoint so k8s can apply a more
-// lenient failureThreshold during boot without weakening the steady-state
-// readiness/liveness probes.
 func (s *Server) handleHealthzStartup(w http.ResponseWriter, r *http.Request) {
 	s.handleHealthzReady(w, r)
 }

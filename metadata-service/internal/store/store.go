@@ -43,8 +43,6 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// Ready reports whether the underlying bbolt database can still service a
-// transaction, so it can back a k8s readiness probe.
 func (s *Store) Ready(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err

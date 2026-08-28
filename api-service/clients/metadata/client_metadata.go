@@ -17,8 +17,6 @@ import (
 // client, which must tolerate large streaming bodies).
 const requestTimeout = 10 * time.Second
 
-// pingTimeout bounds health-check calls to metadata-service, kept short so
-// a hung dependency fails api-service's own readiness probe quickly.
 const pingTimeout = 3 * time.Second
 
 type HTTPMetadataClient struct {
@@ -238,9 +236,6 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
-// Ping checks metadata-service's liveness endpoint, which requires no
-// dependencies of its own to answer, so a non-2xx or transport error here
-// means the service is unreachable rather than merely degraded.
 func (c *HTTPMetadataClient) Ping(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
