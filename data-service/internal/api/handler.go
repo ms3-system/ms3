@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,13 @@ import (
 
 	"github.com/naseyro/ms3/data-service/internal/storage"
 )
+
+// readinessChecker is implemented by storage backends whose availability
+// determines whether this service is ready to serve traffic. It's kept
+// separate from storage.Backend so backends aren't forced to implement it.
+type readinessChecker interface {
+	Ready(ctx context.Context) error
+}
 
 type Handler struct {
 	store  storage.Backend
@@ -23,6 +31,38 @@ func NewHandler(store storage.Backend, logger *slog.Logger) *Handler {
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// healthzLive backs the liveness probe: it only reports whether the
+// process itself is up and able to answer HTTP requests, with no
+// dependency checks, so a slow/degraded dependency never causes k8s to
+// kill and restart an otherwise-healthy pod.
+func (h *Handler) healthzLive(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// healthzReady backs the readiness probe: it checks that the storage
+// backend is reachable, so k8s stops routing traffic to this pod while its
+// dependency is down instead of returning errors to callers.
+func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
+	if checker, ok := h.store.(readinessChecker); ok {
+		if err := checker.Ready(r.Context()); err != nil {
+			h.logger.Warn("readiness check failed", slog.Any("error", err))
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "error": err.Error()})
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// healthzStartup backs the startup probe: it uses the same dependency
+// check as readiness, since all of this service's initialization (opening
+// the storage backend) happens synchronously in main() before the HTTP
+// server starts accepting connections. It exists as a separate endpoint so
+// k8s can apply a more lenient failureThreshold during boot without
+// weakening the steady-state readiness/liveness probes.
+func (h *Handler) healthzStartup(w http.ResponseWriter, r *http.Request) {
+	h.healthzReady(w, r)
 }
 
 func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {

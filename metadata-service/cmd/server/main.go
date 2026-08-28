@@ -51,7 +51,7 @@ func main() {
 	bucketSvc := service.NewBucketService(bucketRepo, logger)
 	objectSvc := service.NewObjectService(objectRepo, bucketRepo, logger)
 
-	router := api.NewRouter(bucketSvc, objectSvc, logger)
+	router := api.NewRouter(bucketSvc, objectSvc, st, logger)
 
 	addr := ":" + cfg.ServerPort
 	srv := &http.Server{

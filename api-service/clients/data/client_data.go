@@ -17,6 +17,10 @@ import (
 const requestTimeout = 10 * time.Second
 const streamingRequestTimeout = 5 * time.Minute
 
+// pingTimeout bounds health-check calls to data-service, kept short so a
+// hung dependency fails api-service's own readiness probe quickly.
+const pingTimeout = 3 * time.Second
+
 type HTTPDataClient struct {
 	BaseURL string
 	HTTP    *http.Client
@@ -102,6 +106,30 @@ func (c *HTTPDataClient) Delete(ctx context.Context, namespace, hash string) err
 
 	if resp.StatusCode != http.StatusNoContent {
 		return dataServiceError(resp, "data-service delete failed")
+	}
+	return nil
+}
+
+// Ping checks data-service's liveness endpoint, which requires no
+// dependencies of its own to answer, so a non-2xx or transport error here
+// means the service is unreachable rather than merely degraded.
+func (c *HTTPDataClient) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/healthz/live", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("data-service healthz returned %s", resp.Status)
 	}
 	return nil
 }

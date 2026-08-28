@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,6 +41,15 @@ func Open(path string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Ready reports whether the underlying bbolt database can still service a
+// transaction, so it can back a k8s readiness probe.
+func (s *Store) Ready(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return s.db.View(func(tx *bolt.Tx) error { return nil })
 }
 
 func (s *Store) bootstrap() error {
