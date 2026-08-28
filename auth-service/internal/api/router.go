@@ -14,8 +14,8 @@ import (
 
 const requestTimeout = 30 * time.Second
 
-func NewRouter(users service.UserService, auth service.AuthService, credentials service.CredentialService, internalToken string, logger *slog.Logger) http.Handler {
-	h := NewHandler(users, auth, credentials, logger)
+func NewRouter(users service.UserService, auth service.AuthService, credentials service.CredentialService, ready ReadinessChecker, internalToken string, logger *slog.Logger) http.Handler {
+	h := NewHandler(users, auth, credentials, ready, logger)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -24,6 +24,9 @@ func NewRouter(users service.UserService, auth service.AuthService, credentials 
 	r.Use(middleware.Timeout(requestTimeout))
 
 	r.Get("/healthz", h.healthz)
+	r.Get("/healthz/live", h.healthzLive)
+	r.Get("/healthz/ready", h.healthzReady)
+	r.Get("/healthz/startup", h.healthzStartup)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/users", func(r chi.Router) {

@@ -54,7 +54,7 @@ func main() {
 	}
 	credentialSvc := service.NewCredentialService(credentialRepo, userRepo, cfg.MasterKey, logger)
 
-	router := api.NewRouter(userSvc, authSvc, credentialSvc, cfg.InternalToken, logger)
+	router := api.NewRouter(userSvc, authSvc, credentialSvc, st, cfg.InternalToken, logger)
 
 	addr := ":" + cfg.ServerPort
 	srv := &http.Server{

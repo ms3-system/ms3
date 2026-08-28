@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -27,7 +28,7 @@ func testRouter(t *testing.T, users service.UserService, auth service.AuthServic
 	if credentials == nil {
 		credentials = &fakeCredentialService{}
 	}
-	return NewRouter(users, auth, credentials, testInternalToken, newTestLogger(t))
+	return NewRouter(users, auth, credentials, nil, testInternalToken, newTestLogger(t))
 }
 
 // fakeAuthAs builds a fakeAuthService whose VerifyAccessToken always
@@ -58,6 +59,43 @@ func TestHealthz(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+}
+
+func TestHealthzProbes(t *testing.T) {
+	for _, path := range []string{"/healthz/live", "/healthz/ready", "/healthz/startup"} {
+		t.Run(path, func(t *testing.T) {
+			r := testRouter(t, nil, nil, nil)
+
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+			}
+		})
+	}
+}
+
+func TestHealthzReady_DependencyDown(t *testing.T) {
+	users := &fakeUserService{}
+	auth := &fakeAuthService{}
+	credentials := &fakeCredentialService{}
+	r := NewRouter(users, auth, credentials, failingReadinessChecker{}, testInternalToken, newTestLogger(t))
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz/ready", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+}
+
+type failingReadinessChecker struct{}
+
+func (failingReadinessChecker) Ready(ctx context.Context) error {
+	return errors.New("store unavailable")
 }
 
 func TestCreateUser_Success(t *testing.T) {
