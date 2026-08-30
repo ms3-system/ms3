@@ -9,6 +9,7 @@
 	4. [ ] Define a volume for the SQLite
 3. Application Logic idea:
 	1. [Simplified MinIO](#project-design)
+4. Deploy on Kubernetes
 
 ---
 
