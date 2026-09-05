@@ -13,8 +13,8 @@ import (
 
 const requestTimeout = 30 * time.Second
 
-func NewRouter(buckets service.BucketService, objects service.ObjectService, logger *slog.Logger) http.Handler {
-	h := NewHandler(buckets, objects, logger)
+func NewRouter(buckets service.BucketService, objects service.ObjectService, ready ReadinessChecker, logger *slog.Logger) http.Handler {
+	h := NewHandler(buckets, objects, ready, logger)
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -23,6 +23,9 @@ func NewRouter(buckets service.BucketService, objects service.ObjectService, log
 	r.Use(middleware.Timeout(requestTimeout))
 
 	r.Get("/healthz", h.healthz)
+	r.Get("/healthz/live", h.healthzLive)
+	r.Get("/healthz/ready", h.healthzReady)
+	r.Get("/healthz/startup", h.healthzStartup)
 
 	r.Route("/buckets", func(r chi.Router) {
 		r.Post("/", h.createBucket)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -9,24 +10,49 @@ import (
 	"auth-service/internal/service"
 )
 
+type ReadinessChecker interface {
+	Ready(ctx context.Context) error
+}
+
 type Handler struct {
 	users       service.UserService
 	auth        service.AuthService
 	credentials service.CredentialService
+	ready       ReadinessChecker
 	logger      *slog.Logger
 }
 
-func NewHandler(users service.UserService, auth service.AuthService, credentials service.CredentialService, logger *slog.Logger) *Handler {
+func NewHandler(users service.UserService, auth service.AuthService, credentials service.CredentialService, ready ReadinessChecker, logger *slog.Logger) *Handler {
 	return &Handler{
 		users:       users,
 		auth:        auth,
 		credentials: credentials,
+		ready:       ready,
 		logger:      logger.With(slog.String("component", "api.handler")),
 	}
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzLive(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
+	if h.ready != nil {
+		if err := h.ready.Ready(r.Context()); err != nil {
+			h.logger.Warn("readiness check failed", slog.Any("error", err))
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "error": err.Error()})
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzStartup(w http.ResponseWriter, r *http.Request) {
+	h.healthzReady(w, r)
 }
 
 func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {

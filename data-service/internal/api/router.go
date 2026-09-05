@@ -19,6 +19,9 @@ func NewRouter(h *Handler, logger *slog.Logger) *chi.Mux {
 	r.Use(middleware.Timeout(requestTimeout))
 
 	r.Get("/healthz", h.healthz)
+	r.Get("/healthz/live", h.healthzLive)
+	r.Get("/healthz/ready", h.healthzReady)
+	r.Get("/healthz/startup", h.healthzStartup)
 
 	r.Get("/namespaces/{namespace}/objects/{objectHash}", h.HandleDownload)
 	r.Delete("/namespaces/{namespace}/objects/{objectHash}", h.HandleDelete)

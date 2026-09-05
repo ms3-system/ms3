@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,10 @@ import (
 
 	"github.com/naseyro/ms3/data-service/internal/storage"
 )
+
+type readinessChecker interface {
+	Ready(ctx context.Context) error
+}
 
 type Handler struct {
 	store  storage.Backend
@@ -23,6 +28,25 @@ func NewHandler(store storage.Backend, logger *slog.Logger) *Handler {
 
 func (h *Handler) healthz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzLive(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
+	if checker, ok := h.store.(readinessChecker); ok {
+		if err := checker.Ready(r.Context()); err != nil {
+			h.logger.Warn("readiness check failed", slog.Any("error", err))
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "error": err.Error()})
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzStartup(w http.ResponseWriter, r *http.Request) {
+	h.healthzReady(w, r)
 }
 
 func (h *Handler) HandleUpload(w http.ResponseWriter, r *http.Request) {

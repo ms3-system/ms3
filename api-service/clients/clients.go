@@ -32,12 +32,16 @@ type MetadataClient interface {
 	PutObjectMeta(ctx context.Context, obj ObjectInfo) (*ObjectInfo, error)
 	GetObjectMeta(ctx context.Context, bucket, key string) (*ObjectInfo, error)
 	DeleteObjectMeta(ctx context.Context, bucket, key string) error
+
+	Ping(ctx context.Context) error
 }
 
 type DataClient interface {
 	Write(ctx context.Context, namespace string, r io.Reader) (hash string, size int64, err error)
 	Read(ctx context.Context, namespace, hash string) (io.ReadCloser, error)
 	Delete(ctx context.Context, namespace, hash string) error
+
+	Ping(ctx context.Context) error
 }
 
 // Credential is what auth-service returns for a looked-up access key: the
@@ -52,6 +56,8 @@ type Credential struct {
 // at rest itself.
 type AuthClient interface {
 	LookupCredential(ctx context.Context, accessKey string) (*Credential, error)
+
+	Ping(ctx context.Context) error
 }
 
 type NotFoundError struct {
