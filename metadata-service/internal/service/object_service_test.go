@@ -47,7 +47,7 @@ func TestObjectService_PutObject_RejectsEmptyStorageRef(t *testing.T) {
 
 func TestObjectService_PutObject_RejectsMissingBucket(t *testing.T) {
 	buckets := &fakeBucketRepository{
-		getByNameFn: func(ctx context.Context, name string) (model.Bucket, error) {
+		getByNameFn: func(_ context.Context, _ string) (model.Bucket, error) {
 			return model.Bucket{}, repository.ErrNotFound
 		},
 	}
@@ -61,13 +61,13 @@ func TestObjectService_PutObject_RejectsMissingBucket(t *testing.T) {
 
 func TestObjectService_PutObject_GeneratesIDAndDefaults(t *testing.T) {
 	buckets := &fakeBucketRepository{
-		getByNameFn: func(ctx context.Context, name string) (model.Bucket, error) {
+		getByNameFn: func(_ context.Context, name string) (model.Bucket, error) {
 			return model.Bucket{Name: name}, nil
 		},
 	}
 	var captured model.Object
 	objects := &fakeObjectRepository{
-		putFn: func(ctx context.Context, o *model.Object) error {
+		putFn: func(_ context.Context, o *model.Object) error {
 			captured = *o
 			return nil
 		},
@@ -131,7 +131,7 @@ func TestObjectService_DeleteObject_RejectsEmptyBucketName(t *testing.T) {
 func TestObjectService_DeleteObject_PassesThroughToRepository(t *testing.T) {
 	var calledBucket, calledKey string
 	objects := &fakeObjectRepository{
-		deleteFn: func(ctx context.Context, bucketName, key string) error {
+		deleteFn: func(_ context.Context, bucketName, key string) error {
 			calledBucket, calledKey = bucketName, key
 			return nil
 		},

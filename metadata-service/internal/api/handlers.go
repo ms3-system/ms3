@@ -25,7 +25,7 @@ func NewHandler(buckets service.BucketService, objects service.ObjectService, lo
 	}
 }
 
-func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) healthz(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

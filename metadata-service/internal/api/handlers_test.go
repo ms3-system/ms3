@@ -62,7 +62,7 @@ func TestHealthz(t *testing.T) {
 func TestCreateBucket_Success(t *testing.T) {
 	created := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	buckets := &fakeBucketService{
-		createFn: func(ctx context.Context, name, ownerID string) (model.Bucket, error) {
+		createFn: func(_ context.Context, name, ownerID string) (model.Bucket, error) {
 			return model.Bucket{ID: "b-1", Name: name, OwnerID: ownerID, CreatedAt: created}, nil
 		},
 	}
@@ -81,7 +81,7 @@ func TestCreateBucket_Success(t *testing.T) {
 
 func TestCreateBucket_InvalidInput(t *testing.T) {
 	buckets := &fakeBucketService{
-		createFn: func(ctx context.Context, name, ownerID string) (model.Bucket, error) {
+		createFn: func(_ context.Context, _, _ string) (model.Bucket, error) {
 			return model.Bucket{}, service.ErrInvalidInput
 		},
 	}
@@ -96,7 +96,7 @@ func TestCreateBucket_InvalidInput(t *testing.T) {
 
 func TestCreateBucket_AlreadyExists(t *testing.T) {
 	buckets := &fakeBucketService{
-		createFn: func(ctx context.Context, name, ownerID string) (model.Bucket, error) {
+		createFn: func(_ context.Context, _, _ string) (model.Bucket, error) {
 			return model.Bucket{}, repository.ErrAlreadyExists
 		},
 	}
@@ -111,7 +111,7 @@ func TestCreateBucket_AlreadyExists(t *testing.T) {
 
 func TestListBuckets_Success(t *testing.T) {
 	buckets := &fakeBucketService{
-		listFn: func(ctx context.Context, ownerID string) ([]model.Bucket, error) {
+		listFn: func(_ context.Context, ownerID string) ([]model.Bucket, error) {
 			if ownerID != "owner-1" {
 				t.Errorf("listFn called with ownerID = %q, want %q", ownerID, "owner-1")
 			}
@@ -133,7 +133,7 @@ func TestListBuckets_Success(t *testing.T) {
 
 func TestGetBucket_Success(t *testing.T) {
 	buckets := &fakeBucketService{
-		getFn: func(ctx context.Context, name string) (model.Bucket, error) {
+		getFn: func(_ context.Context, name string) (model.Bucket, error) {
 			return model.Bucket{ID: "b-1", Name: name}, nil
 		},
 	}
@@ -152,7 +152,7 @@ func TestGetBucket_Success(t *testing.T) {
 
 func TestGetBucket_NotFound(t *testing.T) {
 	buckets := &fakeBucketService{
-		getFn: func(ctx context.Context, name string) (model.Bucket, error) {
+		getFn: func(_ context.Context, _ string) (model.Bucket, error) {
 			return model.Bucket{}, repository.ErrNotFound
 		},
 	}
@@ -167,7 +167,7 @@ func TestGetBucket_NotFound(t *testing.T) {
 
 func TestGetBucket_InternalError(t *testing.T) {
 	buckets := &fakeBucketService{
-		getFn: func(ctx context.Context, name string) (model.Bucket, error) {
+		getFn: func(_ context.Context, _ string) (model.Bucket, error) {
 			return model.Bucket{}, errors.New("boltdb: unexpected disk failure")
 		},
 	}
@@ -187,7 +187,7 @@ func TestGetBucket_InternalError(t *testing.T) {
 func TestDeleteBucket_Success(t *testing.T) {
 	var calledWith string
 	buckets := &fakeBucketService{
-		deleteFn: func(ctx context.Context, name string) error {
+		deleteFn: func(_ context.Context, name string) error {
 			calledWith = name
 			return nil
 		},
@@ -206,7 +206,7 @@ func TestDeleteBucket_Success(t *testing.T) {
 
 func TestDeleteBucket_NotEmpty(t *testing.T) {
 	buckets := &fakeBucketService{
-		deleteFn: func(ctx context.Context, name string) error {
+		deleteFn: func(_ context.Context, _ string) error {
 			return repository.ErrBucketNotEmpty
 		},
 	}
@@ -221,7 +221,7 @@ func TestDeleteBucket_NotEmpty(t *testing.T) {
 
 func TestPutObject_Success(t *testing.T) {
 	objects := &fakeObjectService{
-		putFn: func(ctx context.Context, bucketName, key string, sizeBytes int64, etag, contentType, storageRef string) (model.Object, error) {
+		putFn: func(_ context.Context, bucketName, key string, sizeBytes int64, etag, contentType, storageRef string) (model.Object, error) {
 			return model.Object{
 				ID:          "o-1",
 				BucketName:  bucketName,
@@ -255,7 +255,7 @@ func TestPutObject_Success(t *testing.T) {
 
 func TestListObjects_Success(t *testing.T) {
 	objects := &fakeObjectService{
-		listFn: func(ctx context.Context, bucketName, prefix string, limit int) ([]model.Object, error) {
+		listFn: func(_ context.Context, bucketName, prefix string, _ int) ([]model.Object, error) {
 			if bucketName != "my-bucket" || prefix != "photos/" {
 				t.Errorf("listFn called with (%q, %q), want (%q, %q)", bucketName, prefix, "my-bucket", "photos/")
 			}
@@ -278,7 +278,7 @@ func TestListObjects_Success(t *testing.T) {
 func TestGetObject_WithSlashKey(t *testing.T) {
 	var capturedKey string
 	objects := &fakeObjectService{
-		getFn: func(ctx context.Context, bucketName, key string) (model.Object, error) {
+		getFn: func(_ context.Context, bucketName, key string) (model.Object, error) {
 			capturedKey = key
 			return model.Object{ID: "o-1", BucketName: bucketName, ObjectKey: key}, nil
 		},
@@ -302,7 +302,7 @@ func TestGetObject_WithSlashKey(t *testing.T) {
 func TestDeleteObject_WithSlashKey(t *testing.T) {
 	var capturedKey string
 	objects := &fakeObjectService{
-		deleteFn: func(ctx context.Context, bucketName, key string) error {
+		deleteFn: func(_ context.Context, _, key string) error {
 			capturedKey = key
 			return nil
 		},

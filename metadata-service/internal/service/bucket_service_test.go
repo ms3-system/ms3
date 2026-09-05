@@ -30,7 +30,7 @@ func TestBucketService_CreateBucket_RejectsMissingOwner(t *testing.T) {
 func TestBucketService_CreateBucket_GeneratesID(t *testing.T) {
 	var captured model.Bucket
 	repo := &fakeBucketRepository{
-		createFn: func(ctx context.Context, b *model.Bucket) error {
+		createFn: func(_ context.Context, b *model.Bucket) error {
 			captured = *b
 			return nil
 		},
@@ -51,7 +51,7 @@ func TestBucketService_CreateBucket_GeneratesID(t *testing.T) {
 
 func TestBucketService_CreateBucket_PropagatesRepositoryError(t *testing.T) {
 	repo := &fakeBucketRepository{
-		createFn: func(ctx context.Context, b *model.Bucket) error {
+		createFn: func(_ context.Context, _ *model.Bucket) error {
 			return repository.ErrAlreadyExists
 		},
 	}
@@ -84,7 +84,7 @@ func TestBucketService_ListBuckets_RejectsEmptyOwnerID(t *testing.T) {
 func TestBucketService_DeleteBucket_PassesThroughToRepository(t *testing.T) {
 	var calledWith string
 	repo := &fakeBucketRepository{
-		deleteFn: func(ctx context.Context, name string) error {
+		deleteFn: func(_ context.Context, name string) error {
 			calledWith = name
 			return nil
 		},
