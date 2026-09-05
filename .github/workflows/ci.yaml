@@ -261,6 +261,7 @@ jobs:
           title: "deploy(dev): update image digests from ${{ github.sha }}"
           branch: deploy/dev-${{ github.sha }}
           base: main
+          body: "This PR updates the image digests in the dev environment."
           add-paths: environments/dev/kustomization.yaml
 
       - name: Open PR (prod)
@@ -273,4 +274,5 @@ jobs:
           title: "deploy(prod): update image digests from ${{ github.sha }}"
           branch: deploy/prod-${{ github.sha }}
           base: main
+          body: "This PR updates the image digests in the prod environment."
           add-paths: environments/prod/kustomization.yaml
