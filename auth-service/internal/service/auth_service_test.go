@@ -50,7 +50,7 @@ func TestNewAuthService_RejectsEmptySecret(t *testing.T) {
 func TestAuthService_Login_Success(t *testing.T) {
 	u := testUserWithPassword(t, "hunter22")
 	repo := &fakeUserRepository{
-		getByUsernameFn: func(ctx context.Context, username string) (model.User, error) {
+		getByUsernameFn: func(_ context.Context, _ string) (model.User, error) {
 			return u, nil
 		},
 	}
@@ -95,7 +95,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 func TestAuthService_Login_WrongPassword(t *testing.T) {
 	u := testUserWithPassword(t, "hunter22")
 	repo := &fakeUserRepository{
-		getByUsernameFn: func(ctx context.Context, username string) (model.User, error) {
+		getByUsernameFn: func(_ context.Context, _ string) (model.User, error) {
 			return u, nil
 		},
 	}
@@ -109,7 +109,7 @@ func TestAuthService_Login_WrongPassword(t *testing.T) {
 
 func TestAuthService_Login_UnknownUsername(t *testing.T) {
 	repo := &fakeUserRepository{
-		getByUsernameFn: func(ctx context.Context, username string) (model.User, error) {
+		getByUsernameFn: func(_ context.Context, _ string) (model.User, error) {
 			return model.User{}, repository.ErrNotFound
 		},
 	}
@@ -142,7 +142,7 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 	}
 
 	repo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, _ string) (model.User, error) {
 			return u, nil
 		},
 	}
@@ -217,7 +217,7 @@ func TestAuthService_Refresh_UserNoLongerExists(t *testing.T) {
 	}
 
 	repo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, _ string) (model.User, error) {
 			return model.User{}, repository.ErrNotFound
 		},
 	}

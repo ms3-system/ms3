@@ -29,7 +29,7 @@ func NewBoltUserRepository(db *bbolt.DB, logger *slog.Logger) *BoltUserRepositor
 	}
 }
 
-func (r *BoltUserRepository) Create(ctx context.Context, u *model.User) error {
+func (r *BoltUserRepository) Create(_ context.Context, u *model.User) error {
 	log := r.logger.With(slog.String("username", u.Username), slog.String("user_id", u.ID))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
@@ -83,7 +83,7 @@ func (r *BoltUserRepository) Create(ctx context.Context, u *model.User) error {
 	return nil
 }
 
-func (r *BoltUserRepository) GetByID(ctx context.Context, id string) (model.User, error) {
+func (r *BoltUserRepository) GetByID(_ context.Context, id string) (model.User, error) {
 	log := r.logger.With(slog.String("user_id", id))
 
 	var u model.User
@@ -112,7 +112,7 @@ func (r *BoltUserRepository) GetByID(ctx context.Context, id string) (model.User
 	return u, nil
 }
 
-func (r *BoltUserRepository) GetByUsername(ctx context.Context, username string) (model.User, error) {
+func (r *BoltUserRepository) GetByUsername(_ context.Context, username string) (model.User, error) {
 	log := r.logger.With(slog.String("username", username))
 
 	var u model.User

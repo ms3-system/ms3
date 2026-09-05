@@ -38,7 +38,7 @@ func testRouter(t *testing.T, users service.UserService, auth service.AuthServic
 // with the resulting principal (self-or-admin authorization).
 func fakeAuthAs(userID string, isAdmin bool) *fakeAuthService {
 	return &fakeAuthService{
-		verifyAccessTokenFn: func(tokenString string) (service.Principal, error) {
+		verifyAccessTokenFn: func(_ string) (service.Principal, error) {
 			return service.Principal{UserID: userID, IsAdmin: isAdmin}, nil
 		},
 	}
@@ -94,13 +94,13 @@ func TestHealthzReady_DependencyDown(t *testing.T) {
 
 type failingReadinessChecker struct{}
 
-func (failingReadinessChecker) Ready(ctx context.Context) error {
+func (failingReadinessChecker) Ready(_ context.Context) error {
 	return errors.New("store unavailable")
 }
 
 func TestCreateUser_Success(t *testing.T) {
 	users := &fakeUserService{
-		registerFn: func(ctx context.Context, username, password string) (model.User, error) {
+		registerFn: func(_ context.Context, username, _ string) (model.User, error) {
 			return model.User{ID: "user-1", Username: username, CreatedAt: time.Now()}, nil
 		},
 	}
@@ -144,7 +144,7 @@ func TestCreateUser_InvalidJSON(t *testing.T) {
 
 func TestCreateUser_InvalidInput(t *testing.T) {
 	users := &fakeUserService{
-		registerFn: func(ctx context.Context, username, password string) (model.User, error) {
+		registerFn: func(_ context.Context, _, _ string) (model.User, error) {
 			return model.User{}, service.ErrInvalidInput
 		},
 	}
@@ -161,7 +161,7 @@ func TestCreateUser_InvalidInput(t *testing.T) {
 
 func TestCreateUser_DuplicateUsername(t *testing.T) {
 	users := &fakeUserService{
-		registerFn: func(ctx context.Context, username, password string) (model.User, error) {
+		registerFn: func(_ context.Context, _, _ string) (model.User, error) {
 			return model.User{}, repository.ErrAlreadyExists
 		},
 	}
@@ -178,7 +178,7 @@ func TestCreateUser_DuplicateUsername(t *testing.T) {
 
 func TestGetUser_Success(t *testing.T) {
 	users := &fakeUserService{
-		getUserFn: func(ctx context.Context, id string) (model.User, error) {
+		getUserFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id, Username: "alice"}, nil
 		},
 	}
@@ -195,7 +195,7 @@ func TestGetUser_Success(t *testing.T) {
 
 func TestGetUser_Success_AsAdminForAnotherUser(t *testing.T) {
 	users := &fakeUserService{
-		getUserFn: func(ctx context.Context, id string) (model.User, error) {
+		getUserFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id, Username: "alice"}, nil
 		},
 	}
@@ -212,7 +212,7 @@ func TestGetUser_Success_AsAdminForAnotherUser(t *testing.T) {
 
 func TestGetUser_NotFound(t *testing.T) {
 	users := &fakeUserService{
-		getUserFn: func(ctx context.Context, id string) (model.User, error) {
+		getUserFn: func(_ context.Context, _ string) (model.User, error) {
 			return model.User{}, repository.ErrNotFound
 		},
 	}
@@ -253,7 +253,7 @@ func TestGetUser_Forbidden_MismatchedSubject(t *testing.T) {
 
 func TestCreateCredential_Success(t *testing.T) {
 	credentials := &fakeCredentialService{
-		issueFn: func(ctx context.Context, userID string) (service.IssuedCredential, error) {
+		issueFn: func(_ context.Context, userID string) (service.IssuedCredential, error) {
 			return service.IssuedCredential{AccessKey: "AKIAEXAMPLE", SecretKey: "secret", UserID: userID}, nil
 		},
 	}
@@ -278,7 +278,7 @@ func TestCreateCredential_Success(t *testing.T) {
 
 func TestCreateCredential_UserNotFound(t *testing.T) {
 	credentials := &fakeCredentialService{
-		issueFn: func(ctx context.Context, userID string) (service.IssuedCredential, error) {
+		issueFn: func(_ context.Context, _ string) (service.IssuedCredential, error) {
 			return service.IssuedCredential{}, repository.ErrNotFound
 		},
 	}
@@ -320,10 +320,10 @@ func TestCreateCredential_Forbidden_MismatchedSubject(t *testing.T) {
 func TestRevokeCredential_Success_Owner(t *testing.T) {
 	var revoked string
 	credentials := &fakeCredentialService{
-		getOwnerFn: func(ctx context.Context, accessKey string) (string, error) {
+		getOwnerFn: func(_ context.Context, _ string) (string, error) {
 			return "user-1", nil
 		},
-		revokeFn: func(ctx context.Context, accessKey string) error {
+		revokeFn: func(_ context.Context, accessKey string) error {
 			revoked = accessKey
 			return nil
 		},
@@ -347,7 +347,7 @@ func TestRevokeCredential_Success_Admin(t *testing.T) {
 	credentials := &fakeCredentialService{
 		// getOwnerFn deliberately left unset: an admin must not need an
 		// ownership lookup at all.
-		revokeFn: func(ctx context.Context, accessKey string) error {
+		revokeFn: func(_ context.Context, accessKey string) error {
 			revoked = accessKey
 			return nil
 		},
@@ -368,7 +368,7 @@ func TestRevokeCredential_Success_Admin(t *testing.T) {
 
 func TestRevokeCredential_NotFound(t *testing.T) {
 	credentials := &fakeCredentialService{
-		getOwnerFn: func(ctx context.Context, accessKey string) (string, error) {
+		getOwnerFn: func(_ context.Context, _ string) (string, error) {
 			return "", repository.ErrNotFound
 		},
 	}
@@ -397,7 +397,7 @@ func TestRevokeCredential_Unauthorized_NoToken(t *testing.T) {
 
 func TestRevokeCredential_Forbidden_MismatchedOwner(t *testing.T) {
 	credentials := &fakeCredentialService{
-		getOwnerFn: func(ctx context.Context, accessKey string) (string, error) {
+		getOwnerFn: func(_ context.Context, _ string) (string, error) {
 			return "user-1", nil
 		},
 	}
@@ -414,7 +414,7 @@ func TestRevokeCredential_Forbidden_MismatchedOwner(t *testing.T) {
 
 func TestLogin_Success(t *testing.T) {
 	auth := &fakeAuthService{
-		loginFn: func(ctx context.Context, username, password string) (string, string, error) {
+		loginFn: func(_ context.Context, _, _ string) (string, string, error) {
 			return "access-token", "refresh-token", nil
 		},
 	}
@@ -439,7 +439,7 @@ func TestLogin_Success(t *testing.T) {
 
 func TestLogin_InvalidCredentials(t *testing.T) {
 	auth := &fakeAuthService{
-		loginFn: func(ctx context.Context, username, password string) (string, string, error) {
+		loginFn: func(_ context.Context, _, _ string) (string, string, error) {
 			return "", "", service.ErrInvalidCredentials
 		},
 	}
@@ -468,7 +468,7 @@ func TestLogin_InvalidJSON(t *testing.T) {
 
 func TestRefresh_Success(t *testing.T) {
 	auth := &fakeAuthService{
-		refreshFn: func(ctx context.Context, refreshToken string) (string, error) {
+		refreshFn: func(_ context.Context, _ string) (string, error) {
 			return "new-access-token", nil
 		},
 	}
@@ -485,7 +485,7 @@ func TestRefresh_Success(t *testing.T) {
 
 func TestRefresh_InvalidCredentials(t *testing.T) {
 	auth := &fakeAuthService{
-		refreshFn: func(ctx context.Context, refreshToken string) (string, error) {
+		refreshFn: func(_ context.Context, _ string) (string, error) {
 			return "", service.ErrInvalidCredentials
 		},
 	}
@@ -527,7 +527,7 @@ func TestInternalLookupCredential_WrongToken(t *testing.T) {
 
 func TestInternalLookupCredential_Success(t *testing.T) {
 	credentials := &fakeCredentialService{
-		lookupFn: func(ctx context.Context, accessKey string) (service.LookedUpCredential, error) {
+		lookupFn: func(_ context.Context, _ string) (service.LookedUpCredential, error) {
 			return service.LookedUpCredential{UserID: "user-1", SecretKey: "plaintext-secret"}, nil
 		},
 	}
@@ -553,7 +553,7 @@ func TestInternalLookupCredential_Success(t *testing.T) {
 
 func TestInternalLookupCredential_NotFoundWithValidToken(t *testing.T) {
 	credentials := &fakeCredentialService{
-		lookupFn: func(ctx context.Context, accessKey string) (service.LookedUpCredential, error) {
+		lookupFn: func(_ context.Context, _ string) (service.LookedUpCredential, error) {
 			return service.LookedUpCredential{}, repository.ErrNotFound
 		},
 	}

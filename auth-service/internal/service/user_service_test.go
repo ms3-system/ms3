@@ -15,7 +15,7 @@ import (
 func TestUserService_Register(t *testing.T) {
 	var created model.User
 	repo := &fakeUserRepository{
-		createFn: func(ctx context.Context, u *model.User) error {
+		createFn: func(_ context.Context, u *model.User) error {
 			created = *u
 			return nil
 		},
@@ -84,7 +84,7 @@ func TestUserService_Register_PasswordAtMaxLengthIsAccepted(t *testing.T) {
 
 func TestUserService_Register_PropagatesRepositoryError(t *testing.T) {
 	repo := &fakeUserRepository{
-		createFn: func(ctx context.Context, u *model.User) error {
+		createFn: func(_ context.Context, _ *model.User) error {
 			return repository.ErrAlreadyExists
 		},
 	}
@@ -98,7 +98,7 @@ func TestUserService_Register_PropagatesRepositoryError(t *testing.T) {
 
 func TestUserService_GetUser(t *testing.T) {
 	repo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id, Username: "alice"}, nil
 		},
 	}

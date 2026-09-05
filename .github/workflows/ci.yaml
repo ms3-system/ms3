@@ -1,0 +1,274 @@
+name: ms3 CI
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+  pull_request:
+    branches:
+      - dev
+      - master
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ api-service, auth-service, data-service, metadata-service ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v5.1.0
+
+      - uses: ./.github/actions/setup-go-service
+        with:
+          service: ${{ matrix.service }}
+
+      - name: Run linters
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          install-mode: goinstall
+          working-directory: ${{ matrix.service }}
+          args: --config ${{ github.workspace }}/.golangci.yaml
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+          echo "Go files not formatted:"
+          gofmt -l .
+          exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+  test:
+    needs:
+      - lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ api-service, auth-service, data-service, metadata-service ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v5.1.0
+
+      - uses: ./.github/actions/setup-go-service
+        with:
+          service: ${{ matrix.service }}
+
+      - name: Run tests
+        run: go test ./...
+
+  vulnerability-scan:
+    needs:
+      - lint
+      - test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ api-service, auth-service, data-service, metadata-service ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v5.1.0
+
+      - uses: ./.github/actions/setup-go-service
+        with:
+          service: ${{ matrix.service }}
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+  detect:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v5.1.0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api-service:
+              - 'api-service/**'
+            auth-service:
+              - 'auth-service/**'
+            data-service:
+              - 'data-service/**'
+            metadata-service:
+              - 'metadata-service/**'
+
+  build-scan-push:
+    needs:
+      - lint
+      - test
+      - vulnerability-scan
+      - detect
+    if: github.event_name == 'push' && needs.detect.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.detect.outputs.services) }}
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}
+    steps:
+      - name: Checkout Actions
+        uses: actions/checkout@v5.1.0
+
+      - name: Compute image tag
+        id: vars
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          PREFIX=$([ "${{ github.ref_name }}" = "master" ] && echo "prod" || echo "dev")
+          echo "tag=${PREFIX}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (local only — not pushed yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          tags: ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }}
+          push: false
+          load: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }}
+          format: table
+          exit-code: '1'
+          severity: ${{ github.ref_name == 'master' && 'HIGH,CRITICAL' || 'CRITICAL' }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image and capture digest
+        id: digest
+        run: |
+          DIGEST=$(docker push --quiet ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }} | cut -d'@' -f2)
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "{\"service\":\"${{ matrix.service }}\",\"tag\":\"${{ steps.vars.outputs.tag }}\",\"digest\":\"$DIGEST\"}" > image-info.json
+
+      - name: Upload image info
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-info-${{ matrix.service }}
+          path: image-info.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
+        run: cosign sign --yes ${{ env.IMAGE }}@sha256:${{ steps.digest.outputs.digest }}
+
+  update-fleet:
+    needs:
+      - build-scan-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download image info artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-info-*
+          merge-multiple: true
+          path: image-info
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "name=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout ms3-fleet
+        uses: actions/checkout@v5.1.0
+        with:
+          repository: ms3-system/ms3-fleet
+          token: ${{ secrets.FLEET_REPO_TOKEN }}
+          path: ms3-fleet
+
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Update image digests
+        working-directory: ms3-fleet/environments/${{ steps.env.outputs.name }}
+        run: |
+          for f in "${GITHUB_WORKSPACE}"/image-info/*.json; do
+            service=$(jq -r '.service' "$f")
+            digest=$(jq -r '.digest' "$f")
+            kustomize edit set image "ghcr.io/ms3-system/${service}=ghcr.io/ms3-system/${service}@${digest}"
+          done
+
+      - name: Commit and push (dev)
+        if: steps.env.outputs.name == 'dev'
+        working-directory: ms3-fleet
+        run: |
+          git config user.name "ms3-ci-bot"
+          git config user.email "ci-bot@ms3-system.noreply.github.com"
+          git add environments/dev/kustomization.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "deploy(dev): update image digests from ${{ github.sha }}"
+          git push origin main
+
+      - name: Open PR (prod)
+        if: steps.env.outputs.name == 'prod'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.FLEET_REPO_TOKEN }}
+          path: ms3-fleet
+          commit-message: "deploy(prod): update image digests from ${{ github.sha }}"
+          title: "deploy(prod): update image digests from ${{ github.sha }}"
+          branch: deploy/prod-${{ github.sha }}
+          base: main
+          add-paths: environments/prod/kustomization.yaml

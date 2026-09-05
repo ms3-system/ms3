@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -25,21 +24,7 @@ func NewLocalStore(baseDir string) (*LocalStore, error) {
 	return &LocalStore{baseDir: baseDir}, nil
 }
 
-func (s *LocalStore) Ready(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	probe, err := os.CreateTemp(filepath.Join(s.baseDir, "tmp"), "ready-*.tmp")
-	if err != nil {
-		return fmt.Errorf("data dir not writable: %w", err)
-	}
-	name := probe.Name()
-	probe.Close()
-	return os.Remove(name)
-}
-
-func (s *LocalStore) Write(ctx context.Context, namespace string, r io.Reader) (string, int64, error) {
+func (s *LocalStore) Write(_ context.Context, namespace string, r io.Reader) (string, int64, error) {
 	tmpFile, err := os.CreateTemp(filepath.Join(s.baseDir, "tmp"), "upload-*.tmp")
 	if err != nil {
 		return "", 0, err
@@ -71,7 +56,7 @@ func (s *LocalStore) getShardedPath(namespace, hash string) string {
 	return filepath.Join(s.baseDir, namespace, "objects", hash[0:2], hash[2:4], hash)
 }
 
-func (s *LocalStore) Read(ctx context.Context, namespace string, hash string) (io.ReadCloser, error) {
+func (s *LocalStore) Read(_ context.Context, namespace string, hash string) (io.ReadCloser, error) {
 	path := s.getShardedPath(namespace, hash)
 
 	file, err := os.Open(path)
@@ -82,7 +67,7 @@ func (s *LocalStore) Read(ctx context.Context, namespace string, hash string) (i
 	return file, nil
 }
 
-func (s *LocalStore) Delete(ctx context.Context, namespace string, hash string) error {
+func (s *LocalStore) Delete(_ context.Context, namespace string, hash string) error {
 	path := s.getShardedPath(namespace, hash)
 
 	err := os.Remove(path)

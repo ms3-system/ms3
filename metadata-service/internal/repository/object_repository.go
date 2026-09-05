@@ -29,7 +29,7 @@ func NewBoltObjectRepository(db *bbolt.DB, logger *slog.Logger) *BoltObjectRepos
 	}
 }
 
-func (r *BoltObjectRepository) Put(ctx context.Context, o *model.Object) error {
+func (r *BoltObjectRepository) Put(_ context.Context, o *model.Object) error {
 	log := r.logger.With(slog.String("bucket_name", o.BucketName), slog.String("object_key", o.ObjectKey))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
@@ -59,7 +59,7 @@ func (r *BoltObjectRepository) Put(ctx context.Context, o *model.Object) error {
 	return nil
 }
 
-func (r *BoltObjectRepository) Get(ctx context.Context, bucketName, key string) (model.Object, error) {
+func (r *BoltObjectRepository) Get(_ context.Context, bucketName, key string) (model.Object, error) {
 	log := r.logger.With(slog.String("bucket_name", bucketName), slog.String("object_key", key))
 
 	var o model.Object
@@ -136,7 +136,7 @@ func (r *BoltObjectRepository) List(ctx context.Context, bucketName, prefix stri
 	return objects, nil
 }
 
-func (r *BoltObjectRepository) Delete(ctx context.Context, bucketName, key string) error {
+func (r *BoltObjectRepository) Delete(_ context.Context, bucketName, key string) error {
 	log := r.logger.With(slog.String("bucket_name", bucketName), slog.String("object_key", key))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
