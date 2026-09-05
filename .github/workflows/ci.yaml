@@ -25,6 +25,7 @@ env:
 
 jobs:
   lint:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -61,6 +62,7 @@ jobs:
         run: go vet ./...
 
   test:
+    if: github.event_name == 'pull_request'
     needs:
       - lint
     runs-on: ubuntu-latest
@@ -83,6 +85,7 @@ jobs:
         run: go test ./...
 
   vulnerability-scan:
+    if: github.event_name == 'pull_request'
     needs:
       - lint
       - test
@@ -131,9 +134,6 @@ jobs:
 
   build-scan-push:
     needs:
-      - lint
-      - test
-      - vulnerability-scan
       - detect
     if: github.event_name == 'push' && needs.detect.outputs.services != '[]'
     runs-on: ubuntu-latest
