@@ -45,7 +45,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: ${{ matrix.service }}
-          args: --config ${{ github.workspace }}/.golangci.yml
+          args: --config ${{ github.workspace }}/.golangci.yaml
 
       - name: Check formatting
         run: |
