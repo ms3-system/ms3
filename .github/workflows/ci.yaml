@@ -190,7 +190,11 @@ jobs:
       - name: Push image and capture digest
         id: digest
         run: |
-          DIGEST=$(docker push --quiet ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }} | cut -d'@' -f2)
+          DIGEST=$(docker push ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }} | grep -oE 'digest: sha256:[a-f0-9]{64}' | head -1 | cut -d' ' -f2)
+          if [ -z "$DIGEST" ]; then
+            echo "::error::failed to parse image digest from docker push output"
+            exit 1
+          fi
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "{\"service\":\"${{ matrix.service }}\",\"tag\":\"${{ steps.vars.outputs.tag }}\",\"digest\":\"$DIGEST\"}" > image-info.json
 
