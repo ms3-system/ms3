@@ -47,7 +47,7 @@ func (s *Store) Ready(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return s.db.View(func(tx *bolt.Tx) error { return nil })
+	return s.db.View(func(_ *bolt.Tx) error { return nil })
 }
 
 func (s *Store) bootstrap() error {

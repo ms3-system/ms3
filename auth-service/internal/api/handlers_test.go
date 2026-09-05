@@ -94,7 +94,7 @@ func TestHealthzReady_DependencyDown(t *testing.T) {
 
 type failingReadinessChecker struct{}
 
-func (failingReadinessChecker) Ready(ctx context.Context) error {
+func (failingReadinessChecker) Ready(_ context.Context) error {
 	return errors.New("store unavailable")
 }
 
