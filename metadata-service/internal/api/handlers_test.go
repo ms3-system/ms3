@@ -17,7 +17,7 @@ import (
 
 func newTestRouter(t *testing.T, buckets service.BucketService, objects service.ObjectService) http.Handler {
 	t.Helper()
-	return NewRouter(buckets, objects, newTestLogger(t))
+	return NewRouter(buckets, objects, nil, newTestLogger(t))
 }
 
 func doRequest(t *testing.T, r http.Handler, method, target string, body any) *httptest.ResponseRecorder {
@@ -57,6 +57,36 @@ func TestHealthz(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+}
+
+func TestHealthzProbes(t *testing.T) {
+	for _, path := range []string{"/healthz/live", "/healthz/ready", "/healthz/startup"} {
+		t.Run(path, func(t *testing.T) {
+			r := newTestRouter(t, &fakeBucketService{}, &fakeObjectService{})
+
+			rec := doRequest(t, r, http.MethodGet, path, nil)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+			}
+		})
+	}
+}
+
+func TestHealthzReady_DependencyDown(t *testing.T) {
+	r := NewRouter(&fakeBucketService{}, &fakeObjectService{}, failingReadinessChecker{}, newTestLogger(t))
+
+	rec := doRequest(t, r, http.MethodGet, "/healthz/ready", nil)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+}
+
+type failingReadinessChecker struct{}
+
+func (failingReadinessChecker) Ready(ctx context.Context) error {
+	return errors.New("store unavailable")
 }
 
 func TestCreateBucket_Success(t *testing.T) {

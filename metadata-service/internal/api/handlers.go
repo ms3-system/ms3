@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -11,22 +12,47 @@ import (
 	"metadata-service/internal/service"
 )
 
+type ReadinessChecker interface {
+	Ready(ctx context.Context) error
+}
+
 type Handler struct {
 	buckets service.BucketService
 	objects service.ObjectService
+	ready   ReadinessChecker
 	logger  *slog.Logger
 }
 
-func NewHandler(buckets service.BucketService, objects service.ObjectService, logger *slog.Logger) *Handler {
+func NewHandler(buckets service.BucketService, objects service.ObjectService, ready ReadinessChecker, logger *slog.Logger) *Handler {
 	return &Handler{
 		buckets: buckets,
 		objects: objects,
+		ready:   ready,
 		logger:  logger.With(slog.String("component", "api.handler")),
 	}
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzLive(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzReady(w http.ResponseWriter, r *http.Request) {
+	if h.ready != nil {
+		if err := h.ready.Ready(r.Context()); err != nil {
+			h.logger.Warn("readiness check failed", slog.Any("error", err))
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "error": err.Error()})
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) healthzStartup(w http.ResponseWriter, r *http.Request) {
+	h.healthzReady(w, r)
 }
 
 func (h *Handler) createBucket(w http.ResponseWriter, r *http.Request) {

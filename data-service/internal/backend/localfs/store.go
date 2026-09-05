@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,6 +23,20 @@ func NewLocalStore(baseDir string) (*LocalStore, error) {
 		return nil, err
 	}
 	return &LocalStore{baseDir: baseDir}, nil
+}
+
+func (s *LocalStore) Ready(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	probe, err := os.CreateTemp(filepath.Join(s.baseDir, "tmp"), "ready-*.tmp")
+	if err != nil {
+		return fmt.Errorf("data dir not writable: %w", err)
+	}
+	name := probe.Name()
+	probe.Close()
+	return os.Remove(name)
 }
 
 func (s *LocalStore) Write(ctx context.Context, namespace string, r io.Reader) (string, int64, error) {

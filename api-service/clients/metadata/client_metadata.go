@@ -17,6 +17,8 @@ import (
 // client, which must tolerate large streaming bodies).
 const requestTimeout = 10 * time.Second
 
+const pingTimeout = 3 * time.Second
+
 type HTTPMetadataClient struct {
 	BaseURL string
 	HTTP    *http.Client
@@ -232,6 +234,27 @@ func (c *HTTPMetadataClient) DeleteObjectMeta(ctx context.Context, bucket, key s
 
 type errorResponse struct {
 	Error string `json:"error"`
+}
+
+func (c *HTTPMetadataClient) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/healthz/live", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("metadata-service healthz returned %s", resp.Status)
+	}
+	return nil
 }
 
 func (c *HTTPMetadataClient) do(req *http.Request, wantStatus int, out any) error {
