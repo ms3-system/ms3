@@ -23,5 +23,3 @@ issues:
     - mocks
   max-issues-per-linter: 0
   max-same-issues: 0
-
-version: 2
