@@ -251,19 +251,17 @@ jobs:
             kustomize edit set image "ghcr.io/ms3-system/${service}=ghcr.io/ms3-system/${service}@${digest}"
           done
 
-      - name: Commit and push (dev)
+      - name: Open PR (dev)
         if: steps.env.outputs.name == 'dev'
-        working-directory: ms3-fleet
-        run: |
-          git config user.name "ms3-ci-bot"
-          git config user.email "ci-bot@ms3-system.noreply.github.com"
-          git add environments/dev/kustomization.yaml
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          git commit -m "deploy(dev): update image digests from ${{ github.sha }}"
-          git push origin main
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.FLEET_REPO_TOKEN }}
+          path: ms3-fleet
+          commit-message: "deploy(dev): update image digests from ${{ github.sha }}"
+          title: "deploy(dev): update image digests from ${{ github.sha }}"
+          branch: deploy/dev-${{ github.sha }}
+          base: main
+          add-paths: environments/dev/kustomization.yaml
 
       - name: Open PR (prod)
         if: steps.env.outputs.name == 'prod'
