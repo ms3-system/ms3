@@ -57,7 +57,7 @@ func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (s *Server) handleHealthzLive(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleHealthzLive(w http.ResponseWriter, _ *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
