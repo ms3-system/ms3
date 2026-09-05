@@ -23,15 +23,15 @@ type fakeBackend struct {
 
 var _ storage.Backend = (*fakeBackend)(nil)
 
-func (f *fakeBackend) Write(ctx context.Context, namespace string, r io.Reader) (string, int64, error) {
+func (f *fakeBackend) Write(_ context.Context, _ string, _ io.Reader) (string, int64, error) {
 	return "", 0, nil
 }
 
-func (f *fakeBackend) Read(ctx context.Context, namespace, hash string) (io.ReadCloser, error) {
+func (f *fakeBackend) Read(_ context.Context, _, _ string) (io.ReadCloser, error) {
 	return nil, nil
 }
 
-func (f *fakeBackend) Delete(ctx context.Context, namespace, hash string) error {
+func (f *fakeBackend) Delete(_ context.Context, _, _ string) error {
 	return nil
 }
 
@@ -79,7 +79,7 @@ func TestHealthzProbes(t *testing.T) {
 }
 
 func TestHealthzReady_DependencyDown(t *testing.T) {
-	store := &fakeBackend{readyFn: func(ctx context.Context) error {
+	store := &fakeBackend{readyFn: func(_ context.Context) error {
 		return errors.New("data dir not writable")
 	}}
 	r := testRouter(t, store)
