@@ -1,0 +1,27 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - gofmt
+    - goimports
+    - revive
+    - bodyclose
+    - sqlclosecheck
+    - noctx
+    - gosec
+
+issues:
+  exclude-dirs:
+    - vendor
+    - mocks
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+version: 2
