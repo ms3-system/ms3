@@ -15,10 +15,14 @@ import (
 // sigv4Region and sigv4Service are fixed rather than configurable — this is
 // a small local S3-compatible system, not a multi-region deployment, so
 // there's nothing for a client to legitimately pick beyond these.
+//
+// requireSigV4 below is currently not wired up (see the commented-out
+// r.Use(...) in server.go), so these are flagged unused by the linter;
+// nolint until the middleware is re-enabled or removed for good.
 const (
-	sigv4Region  = "us-east-1"
-	sigv4Service = "s3"
-	maxClockSkew = 15 * time.Minute
+	sigv4Region  = "us-east-1"      //nolint:unused
+	sigv4Service = "s3"             //nolint:unused
+	maxClockSkew = 15 * time.Minute //nolint:unused
 )
 
 type contextKey int
@@ -43,6 +47,8 @@ func principalFromContext(ctx context.Context) (Principal, bool) {
 // request, and stores the resulting Principal in the request context. It
 // does not itself authorize any action beyond "this request was validly
 // signed by a known access key" — see authorizeBucketOwner for that.
+//
+//nolint:unused
 func requireSigV4(auth clients.AuthClient, logger *slog.Logger) func(http.Handler) http.Handler {
 	log := logger.With(slog.String("component", "api.auth"))
 

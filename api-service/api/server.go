@@ -44,7 +44,7 @@ func NewServer(metadata clients.MetadataClient, data clients.DataClient, auth cl
 	return s
 }
 
-func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
