@@ -17,13 +17,13 @@ func testMasterKey() []byte {
 func TestCredentialService_IssueCredential(t *testing.T) {
 	var stored model.Credential
 	credRepo := &fakeCredentialRepository{
-		createFn: func(ctx context.Context, c *model.Credential) error {
+		createFn: func(_ context.Context, c *model.Credential) error {
 			stored = *c
 			return nil
 		},
 	}
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id}, nil
 		},
 	}
@@ -56,7 +56,7 @@ func TestCredentialService_IssueCredential(t *testing.T) {
 
 func TestCredentialService_IssueCredential_UnknownUser(t *testing.T) {
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, _ string) (model.User, error) {
 			return model.User{}, repository.ErrNotFound
 		},
 	}
@@ -80,7 +80,7 @@ func TestCredentialService_IssueCredential_EmptyUserID(t *testing.T) {
 func TestCredentialService_IssueCredential_RetriesOnAccessKeyCollision(t *testing.T) {
 	attempts := 0
 	credRepo := &fakeCredentialRepository{
-		createFn: func(ctx context.Context, c *model.Credential) error {
+		createFn: func(_ context.Context, _ *model.Credential) error {
 			attempts++
 			if attempts < 3 {
 				return repository.ErrAlreadyExists
@@ -89,7 +89,7 @@ func TestCredentialService_IssueCredential_RetriesOnAccessKeyCollision(t *testin
 		},
 	}
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id}, nil
 		},
 	}
@@ -109,12 +109,12 @@ func TestCredentialService_IssueCredential_RetriesOnAccessKeyCollision(t *testin
 
 func TestCredentialService_IssueCredential_GivesUpAfterMaxRetries(t *testing.T) {
 	credRepo := &fakeCredentialRepository{
-		createFn: func(ctx context.Context, c *model.Credential) error {
+		createFn: func(_ context.Context, _ *model.Credential) error {
 			return repository.ErrAlreadyExists
 		},
 	}
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id}, nil
 		},
 	}
@@ -129,16 +129,16 @@ func TestCredentialService_IssueCredential_GivesUpAfterMaxRetries(t *testing.T) 
 func TestCredentialService_LookupCredential_DecryptsSecret(t *testing.T) {
 	var stored model.Credential
 	credRepo := &fakeCredentialRepository{
-		createFn: func(ctx context.Context, c *model.Credential) error {
+		createFn: func(_ context.Context, c *model.Credential) error {
 			stored = *c
 			return nil
 		},
-		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+		getByAccessKeyFn: func(_ context.Context, _ string) (model.Credential, error) {
 			return stored, nil
 		},
 	}
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id}, nil
 		},
 	}
@@ -164,16 +164,16 @@ func TestCredentialService_LookupCredential_DecryptsSecret(t *testing.T) {
 func TestCredentialService_LookupCredential_WrongMasterKeyFailsToDecrypt(t *testing.T) {
 	var stored model.Credential
 	credRepo := &fakeCredentialRepository{
-		createFn: func(ctx context.Context, c *model.Credential) error {
+		createFn: func(_ context.Context, c *model.Credential) error {
 			stored = *c
 			return nil
 		},
-		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+		getByAccessKeyFn: func(_ context.Context, _ string) (model.Credential, error) {
 			return stored, nil
 		},
 	}
 	userRepo := &fakeUserRepository{
-		getByIDFn: func(ctx context.Context, id string) (model.User, error) {
+		getByIDFn: func(_ context.Context, id string) (model.User, error) {
 			return model.User{ID: id}, nil
 		},
 	}
@@ -196,7 +196,7 @@ func TestCredentialService_LookupCredential_WrongMasterKeyFailsToDecrypt(t *test
 
 func TestCredentialService_LookupCredential_NotFound(t *testing.T) {
 	credRepo := &fakeCredentialRepository{
-		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+		getByAccessKeyFn: func(_ context.Context, _ string) (model.Credential, error) {
 			return model.Credential{}, repository.ErrNotFound
 		},
 	}
@@ -210,7 +210,7 @@ func TestCredentialService_LookupCredential_NotFound(t *testing.T) {
 
 func TestCredentialService_GetCredentialOwner(t *testing.T) {
 	credRepo := &fakeCredentialRepository{
-		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+		getByAccessKeyFn: func(_ context.Context, accessKey string) (model.Credential, error) {
 			return model.Credential{AccessKey: accessKey, UserID: "user-1"}, nil
 		},
 	}
@@ -227,7 +227,7 @@ func TestCredentialService_GetCredentialOwner(t *testing.T) {
 
 func TestCredentialService_GetCredentialOwner_NotFound(t *testing.T) {
 	credRepo := &fakeCredentialRepository{
-		getByAccessKeyFn: func(ctx context.Context, accessKey string) (model.Credential, error) {
+		getByAccessKeyFn: func(_ context.Context, _ string) (model.Credential, error) {
 			return model.Credential{}, repository.ErrNotFound
 		},
 	}
@@ -251,7 +251,7 @@ func TestCredentialService_GetCredentialOwner_EmptyAccessKey(t *testing.T) {
 func TestCredentialService_RevokeCredential(t *testing.T) {
 	var revoked string
 	credRepo := &fakeCredentialRepository{
-		revokeFn: func(ctx context.Context, accessKey string) error {
+		revokeFn: func(_ context.Context, accessKey string) error {
 			revoked = accessKey
 			return nil
 		},

@@ -29,7 +29,7 @@ func NewBoltCredentialRepository(db *bbolt.DB, logger *slog.Logger) *BoltCredent
 	}
 }
 
-func (r *BoltCredentialRepository) Create(ctx context.Context, c *model.Credential) error {
+func (r *BoltCredentialRepository) Create(_ context.Context, c *model.Credential) error {
 	log := r.logger.With(slog.String("access_key", c.AccessKey), slog.String("user_id", c.UserID))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
@@ -67,7 +67,7 @@ func (r *BoltCredentialRepository) Create(ctx context.Context, c *model.Credenti
 	return nil
 }
 
-func (r *BoltCredentialRepository) GetByAccessKey(ctx context.Context, accessKey string) (model.Credential, error) {
+func (r *BoltCredentialRepository) GetByAccessKey(_ context.Context, accessKey string) (model.Credential, error) {
 	log := r.logger.With(slog.String("access_key", accessKey))
 
 	var c model.Credential
@@ -99,7 +99,7 @@ func (r *BoltCredentialRepository) GetByAccessKey(ctx context.Context, accessKey
 	return c, nil
 }
 
-func (r *BoltCredentialRepository) Revoke(ctx context.Context, accessKey string) error {
+func (r *BoltCredentialRepository) Revoke(_ context.Context, accessKey string) error {
 	log := r.logger.With(slog.String("access_key", accessKey))
 
 	err := r.db.Update(func(tx *bbolt.Tx) error {
